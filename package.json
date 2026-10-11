@@ -1,0 +1,22 @@
+{
+  "name": "megami-expedition",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "models": "bash tools/blender/build_characters.sh && bash tools/blender/build_env.sh"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/three": "^0.180.0",
+    "typescript": "5.9",
+    "vite": "^7.3.7"
+  }
+}
