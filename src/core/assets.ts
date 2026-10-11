@@ -6,7 +6,9 @@ import type { GLTFParser } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { patchMaterial, patchObject } from '../fx/fakeLights';
 
 /** Models produced by tools/blender/*.py → public/models/*.glb */
-export const MODEL_NAMES = ['kai', 'lyra', 'knight', 'cograt', 'slime', 'beetle', 'wisp', 'golem', 'props', 'arena'] as const;
+export const MODEL_NAMES = ['kai', 'lyra', 'knight', 'cograt', 'slime', 'beetle', 'wisp', 'golem', 'props', 'arena',
+  // chapter 1: new monsters, NPCs, town / factory / tower props
+  'prism_moth', 'bellows_toad', 'strongbox_tortoise', 'grand_carillon', 'npc_marta', 'npc_bail', 'npc_poppy', 'npc_shopkeeper', 'props2'] as const;
 export type ModelName = (typeof MODEL_NAMES)[number];
 
 const loaded = new Map<string, THREE.Object3D>();
@@ -184,10 +186,14 @@ export function getModel(name: ModelName): THREE.Object3D {
   return placeholderModel(name);
 }
 
+/** Top-level prop names in a props GLB (shader warm-up). */
+export function propNames(file: 'props' | 'props2') {
+  return loaded.get(file)?.children.map((c) => c.name) ?? [];
+}
+
 /** Single prop from props.glb by top-level node name. */
 export function getProp(name: string): THREE.Object3D {
-  const props = loaded.get('props');
-  const src = props?.getObjectByName(name);
+  const src = loaded.get('props')?.getObjectByName(name) ?? loaded.get('props2')?.getObjectByName(name);
   if (src) {
     const c = src.clone(true);
     c.position.set(0, 0, 0);
@@ -264,6 +270,14 @@ function placeholderModel(name: ModelName): THREE.Object3D {
     case 'slime': return blob(0x3fd1b8, 0.7);
     case 'beetle': return blob(0xc9a14a, 0.9);
     case 'wisp': return blob(0xffb347, 0.6, 1.3);
+    case 'prism_moth': return blob(0x7fd6e8, 0.6, 1.2);
+    case 'bellows_toad': return blob(0xa8643a, 0.8);
+    case 'strongbox_tortoise': return blob(0x3b3f46, 1.3);
+    case 'grand_carillon': return humanoid(4.0, 0xb08d3c, 0x2b2a28);
+    case 'npc_marta': return humanoid(1.7, 0x2f4a3a, 0x9aa2ad);
+    case 'npc_bail': return humanoid(1.85, 0x9aa0a8, 0x2a2a2e);
+    case 'npc_poppy': return humanoid(1.15, 0x4a6a9a, 0xc8283a);
+    case 'npc_shopkeeper': return humanoid(1.7, 0x6a4a30, 0xefe6d2);
     case 'arena': {
       const g = new THREE.Group();
       const m = new THREE.Mesh(new THREE.CylinderGeometry(13, 12, 2, 32), pm(0x8d877c));

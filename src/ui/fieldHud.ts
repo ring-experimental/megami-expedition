@@ -4,7 +4,7 @@ import { State } from '../game/state';
 import type { UI } from './ui';
 import type { FieldMode } from '../field/field';
 import type { FieldEnemy } from '../field/fieldEnemy';
-import { CHESTS, REST_POINT, WORLD_RADIUS, ZONE_NAME } from '../data/world';
+import type { ZoneDef } from '../data/zones';
 import { Input, type InputState } from '../core/input';
 import { portraitInner } from './art';
 import { pb, type PadButton } from './glyph';
@@ -52,6 +52,9 @@ function compassSvg() {
 export class FieldHud {
   root: HTMLElement;
   private party: HTMLElement;
+  private zoneName: HTMLElement;
+  /** current objective line under the minimap (story/quest tracker) */
+  private goal: HTMLElement | null = null;
   private prompt: HTMLElement;
   private actions: HTMLElement;
   private slots = new Map<string, { el: HTMLElement; a: Action }>();
@@ -70,7 +73,7 @@ export class FieldHud {
   constructor(private ui: UI, private field: FieldMode) {
     this.root = el('div', 'field-hud', undefined, ui.hudLayer);
     const tl = el('div', 'fh-topleft', undefined, this.root);
-    el('div', 'zone-name', ZONE_NAME, tl);
+    this.zoneName = el('div', 'zone-name', '', tl);
     this.party = el('div', 'fh-party', undefined, tl);
     const tr = el('div', 'fh-map', undefined, this.root);
     this.mapCanvas = el('canvas', '', undefined, tr);
@@ -85,6 +88,20 @@ export class FieldHud {
       this.renderPrompt();
     });
     this.setVisible(false);
+  }
+
+  setZone(z: ZoneDef) {
+    this.zoneName.textContent = `${z.name} · ${z.sub}`;
+  }
+
+  goalPos: { zone: string; x: number; z: number } | null = null;
+
+  /** Objective tracker: one line under the minimap (empty hides it), plus an optional map marker. */
+  setGoal(html: string, pos: { zone: string; x: number; z: number } | null = null) {
+    this.goalPos = pos;
+    if (!this.goal) this.goal = el('div', 'fh-goal', '', this.root);
+    this.goal.innerHTML = html ? `<span class="fg-k">목표</span>${html}` : '';
+    this.goal.style.display = html ? '' : 'none';
   }
 
   setVisible(v: boolean) {
@@ -201,7 +218,8 @@ export class FieldHud {
   private drawMap() {
     const g = this.map;
     const S = 180, R = S / 2;
-    const sc = (R - 6) / WORLD_RADIUS;
+    const z = this.field.zone;
+    const sc = (R - 6) / z.radius;
     g.clearRect(0, 0, S, S);
     g.save();
     g.beginPath();
@@ -215,23 +233,30 @@ export class FieldHud {
     g.strokeStyle = 'rgba(107,84,32,0.9)';
     g.lineWidth = 3;
     g.beginPath();
-    g.moveTo(tx(0), tz(70)); g.lineTo(tx(0), tz(-30));
-    g.moveTo(tx(0), tz(22)); g.lineTo(tx(-30), tz(8)); g.lineTo(tx(-46), tz(-20));
-    g.moveTo(tx(0), tz(2)); g.lineTo(tx(32), tz(-8)); g.lineTo(tx(48), tz(-18));
-    g.moveTo(tx(0), tz(-30)); g.lineTo(tx(36), tz(-44));
+    for (const r of z.terrain.roads) r.forEach(([x, zz], i) => (i ? g.lineTo(tx(x), tz(zz)) : g.moveTo(tx(x), tz(zz))));
     g.stroke();
-    // plaza + clock tower
+    // plazas + landmarks
     g.fillStyle = 'rgba(107,84,32,0.5)';
-    g.beginPath(); g.arc(tx(0), tz(-40), 15 * sc, 0, Math.PI * 2); g.fill();
+    if (z.terrain.paved) { g.beginPath(); g.arc(tx(0), tz(0), z.terrain.paved * sc, 0, Math.PI * 2); g.fill(); }
+    for (const p of z.terrain.plazas) { g.beginPath(); g.arc(tx(p.x), tz(p.z), p.r * sc, 0, Math.PI * 2); g.fill(); }
     g.fillStyle = '#f2c94c';
-    g.fillRect(tx(0) - 3, tz(-52) - 3, 6, 6);
-    // rest spring: gold ring
+    for (const l of z.landmarks ?? []) g.fillRect(tx(l.x) - 3, tz(l.z) - 3, 6, 6);
+    // rest point: gold ring; gates: gold chevrons at the rim; NPCs: bone dots
     g.strokeStyle = '#f2c94c';
     g.lineWidth = 2;
-    g.beginPath(); g.arc(tx(REST_POINT.x), tz(REST_POINT.z), 4.5, 0, Math.PI * 2); g.stroke();
+    for (const r of this.field.rests) { g.beginPath(); g.arc(tx(r.x), tz(r.z), 4.5, 0, Math.PI * 2); g.stroke(); }
+    for (const gt of z.gates) {
+      if (gt.afterFlag && !State.current.flag(gt.afterFlag)) continue;
+      const open = !gt.needFlag || State.current.flag(gt.needFlag);
+      g.fillStyle = open ? '#f2c94c' : '#6b5420';
+      g.beginPath(); g.moveTo(tx(gt.x), tz(gt.z) - 5); g.lineTo(tx(gt.x) + 5, tz(gt.z) + 4); g.lineTo(tx(gt.x) - 5, tz(gt.z) + 4); g.closePath(); g.fill();
+    }
+    g.fillStyle = '#efe6d2';
+    for (const n of this.field.npcs) { g.beginPath(); g.arc(tx(n.def.x), tz(n.def.z), 2.2, 0, Math.PI * 2); g.fill(); }
     // chests
     g.fillStyle = '#d4a83a';
-    for (const c of CHESTS) {
+    for (const c of z.chests) {
+      if (c.afterFlag && !State.current.flag(c.afterFlag)) continue;
       if (State.current.openedChests.has(c.id)) continue;
       g.fillRect(tx(c.x) - 2.5, tz(c.z) - 2.5, 5, 5);
     }
@@ -242,6 +267,15 @@ export class FieldHud {
       g.fillStyle = e.stunned ? '#f2c94c' : '#c8283a';
       g.beginPath(); g.arc(tx(e.pos.x), tz(e.pos.z), r, 0, Math.PI * 2); g.fill();
       if (e.sp.tier !== 'weak') { g.strokeStyle = '#efe6d2'; g.lineWidth = 1; g.stroke(); }
+    }
+    // objective marker: a gold diamond (or a rim chevron when it's in another zone / off the map)
+    const goal = this.goalPos;
+    if (goal && goal.zone === z.id) {
+      g.fillStyle = '#f2c94c';
+      g.strokeStyle = '#0b0907';
+      g.lineWidth = 1.5;
+      const gx = tx(goal.x), gz = tz(goal.z);
+      g.beginPath(); g.moveTo(gx, gz - 6); g.lineTo(gx + 5, gz); g.lineTo(gx, gz + 6); g.lineTo(gx - 5, gz); g.closePath(); g.fill(); g.stroke();
     }
     // player arrow
     const p = this.field.player;

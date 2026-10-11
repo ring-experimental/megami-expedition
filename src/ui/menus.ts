@@ -22,15 +22,15 @@ import { SKILLS } from '../data/skills';
 import { ITEMS } from '../data/items';
 import { PERSONALITIES } from '../data/negotiation';
 import { ARTS, BOARDS, CRYSTAL_NAME, EFFECT_DESC, PARTS, artsFor, lineTotals } from '../data/parts';
-import { MAX_INHERITED, fusionResult } from '../data/fusion';
+import { MAX_INHERITED, fusionRecipe } from '../data/fusion';
 
 const STAT_KO: Record<string, string> = { hp: 'HP', atk: '공격', mag: '마력', def: '방어', res: '저항', spd: '속도' };
-const costHtml = (c: Partial<Record<Element, number>>) => Object.entries(c).map(([e, n]) => `${icon('el', e, ELEMENT_NAME[e as Element])}${n}`).join(' ');
+const costHtml = (c: Partial<Record<Element | 'any', number>>) => Object.entries(c).map(([e, n]) => (e === 'any' ? `아무 결정 ${n}` : `${icon('el', e, ELEMENT_NAME[e as Element])}${n}`)).join(' ');
 const needHtml = (c: Partial<Record<Element, number>>) => Object.entries(c).map(([e, n]) => `${ELEMENT_NAME[e as Element]} ${n}`).join(' + ');
 
-const ALL_TABS: [string, string][] = [['party', '파티 편성'], ['board', '부품'], ['workshop', '공방'], ['bestiary', '몬스터 도감'], ['items', '소지품'], ['save', '저장 · 불러오기'], ['settings', '설정'], ['controls', '조작법']];
+const ALL_TABS: [string, string][] = [['journal', '수첩'], ['party', '파티 편성'], ['board', '부품'], ['workshop', '공방'], ['bestiary', '몬스터 도감'], ['items', '소지품'], ['save', '저장 · 불러오기'], ['settings', '설정'], ['controls', '조작법']];
 /** The 공방 tab appears once the party has reached the workshop (story flag). */
-const pauseTabs = () => ALL_TABS.filter(([id]) => id !== 'workshop' || State.current.flag('workshop'));
+const pauseTabs = () => ALL_TABS.filter(([id]) => (id !== 'workshop' || State.current.flag('workshop')) && (id !== 'board' || State.current.flag('ch1_hub_arrived')));
 
 export class Menus {
   private title: HTMLElement | null = null;
@@ -243,6 +243,13 @@ export class Menus {
     this.renderPause();
   }
 
+  /** Open the pause menu on a given tab (e.g. 피페 → 공방). */
+  openTab(id: string) {
+    if (!this.pause || !pauseTabs().some(([t]) => t === id)) return;
+    this.tab = id;
+    this.renderPause();
+  }
+
   hidePause() {
     this.partyPick = null;
     this.pause?.remove();
@@ -264,6 +271,7 @@ export class Menus {
     else if (this.tab === 'items') this.renderItems(body);
     else if (this.tab === 'save') this.renderSave(body);
     else if (this.tab === 'board') this.renderBoard(body);
+    else if (this.tab === 'journal') this.renderJournal(body);
     else if (this.tab === 'workshop') this.renderWorkshop(body);
     else if (this.tab === 'settings') this.renderSettings(body);
     else this.renderControls(body);
@@ -378,7 +386,7 @@ export class Menus {
     const slots = st.boards[hero];
     const open = st.boardOpen[hero];
     const heads = el('div', 'bd-heads', undefined, body);
-    (['kai', 'lyra'] as const).forEach((h) => {
+    (['kai', 'lyra'] as const).filter((h) => st.has(h)).forEach((h) => {
       const b = el('button', `mn-btn small bd-head${h === hero ? ' on' : ''}`, `${HEROES[h].name} · ${BOARDS[h].name}`, heads);
       if (h === hero) b.dataset.padFirst = '';
       b.onclick = () => { if (this.boardHero !== h) { this.boardHero = h; Sfx.play('ui_move'); this.renderPause(); } };
@@ -403,12 +411,12 @@ export class Menus {
     });
     // right: line totals, arts, effects
     const totals = lineTotals(def, slots);
-    const arts = artsFor(def, slots);
+    const arts = artsFor(hero, slots);
     const m = st.member(hero);
     const effects = [...st.partEffects(m)];
     info.innerHTML = `<div class="mn-sec">라인</div>${totals.map((t, li) => `<div class="bd-tot"><span class="bd-ln l${li}">라인 ${li + 1}</span>${(Object.entries(t) as [Element, number][]).map(([e, v]) => `${icon('el', e, ELEMENT_NAME[e])}<b>${v}</b>`).join(' ') || '<span class="dim">비어 있음</span>'}</div>`).join('')}
       <div class="mn-sec">아츠</div>${arts.length ? arts.map((a) => `<div class="bd-art">${icon('el', a.skill.element, '')}<b>${a.skill.name}</b> <span class="dim">${a.skill.ap} AP · ${a.skill.desc}</span></div>`).join('') : '<div class="mn-note">한 라인의 속성 합이 조건에 닿으면 아츠가 열립니다.</div>'}
-      <div class="bd-next dim">${ARTS.filter((a) => !arts.includes(a)).slice(0, 4).map((a) => `${a.skill.name} — ${needHtml(a.need)}`).join(' · ')}</div>
+      <div class="bd-next dim">${ARTS.filter((a) => a.who === hero && !arts.includes(a)).map((a) => `${a.skill.name} — ${needHtml(a.need)}`).join(' · ')}</div>
       ${effects.length ? `<div class="mn-sec">효과</div>${effects.map((e) => `<div class="bd-art">${EFFECT_DESC[e]}</div>`).join('')}` : ''}`;
   }
 
@@ -492,6 +500,7 @@ export class Menus {
       };
     }
     el('div', 'mn-sec', '기령 합주 · 계승', body);
+    if (!st.flag('fusion')) { el('div', 'mn-note', '피페: "곡조가 조금 더 모이면 합주를 해 주마." <span class="dim">(이야기를 진행하면 열립니다)</span>', body); return; }
     const mons = st.roster.filter((m) => m.kind === 'monster');
     const f = this.forge;
     bindInput(el('div', 'mn-note', '', body), () => !f.base ? '남길 동료(바탕)를 고르세요. 재료가 된 동료는 파티를 떠납니다.'
@@ -500,8 +509,11 @@ export class Menus {
     if (mons.length < 2) el('div', 'mn-note dim', '영입한 몬스터가 둘 이상 있어야 합니다.', row);
     for (const m of mons) {
       const sel = f.base === m.id || f.mat === m.id;
-      const c = el('button', `ws-mon${sel ? ' sel' : ''}`, `<div class="bs-chip" style="--c:${m.color}">${portraitInner(m.id, m.name)}</div><span>${m.name}<span class="lv">Lv${m.level}</span></span>`, row);
+      const bond = st.bond[m.id] ?? 1;
+      const c = el('button', `ws-mon${sel ? ' sel' : ''}${m.locked ? ' off' : ''}`, `<div class="bs-chip" style="--c:${m.color}">${portraitInner(m.id, m.name)}</div><span>${m.name}<span class="lv">Lv${m.level}</span><small class="ws-bond">${'♥'.repeat(bond)}${'♡'.repeat(3 - bond)}</small></span>`, row);
       c.onclick = () => {
+        if (m.locked) { Sfx.play('ui_error'); this.game.ui.toast(`피페: "${m.name}은(는) 이야기 한가운데 있는 곡조라 안 건드린단다."`); return; }
+        if (bond < 1) { Sfx.play('ui_error'); this.game.ui.toast(`${m.name}이(가) 내키지 않아 한다. (친밀도 0 — 캠프에서 이야기해 보자)`); return; }
         if (f.base === m.id) { this.forge = {}; Sfx.play('ui_back'); }
         else if (!f.base) { f.base = m.id; Sfx.play('ui_ok'); }
         else if (!f.mat) { f.mat = m.id; Sfx.play('ui_ok'); }
@@ -509,15 +521,17 @@ export class Menus {
       };
     }
     if (f.base && f.mat) {
-      const res = fusionResult(f.base, f.mat);
+      const rec = fusionRecipe(f.base, f.mat);
       const base = st.member(f.base), mat = st.member(f.mat);
       const box = el('div', 'ws-result', '', body);
-      if (res) {
-        const sp = SPECIES[res];
-        box.innerHTML = `<div class="ws-q"><b>${base.name}</b> + <b>${mat.name}</b> → <b class="kw">${sp.name}</b> <span class="dim">(합주: 두 동료가 하나가 된다)</span></div>`;
+      if (rec && rec.when && !rec.when()) {
+        box.innerHTML = `<div class="ws-q">피페: "이 둘은… 아직 곡조가 맞지 않는구나." <span class="dim">(조건: ${rec.whenText})</span></div>`;
+      } else if (rec) {
+        const sp = SPECIES[rec.result];
+        box.innerHTML = `<div class="ws-q"><b>${base.name}</b> + <b>${mat.name}</b> → <b class="kw">${sp.name}</b> <span class="dim">— 피페: "${rec.line}"</span></div>`;
         const b = el('button', 'mn-btn', '합주한다', box);
         b.dataset.padFirst = '';
-        b.onclick = () => { const r = st.fuse(base.id, mat.id, res); this.forge = {}; Sfx.play('recruit'); this.game.ui.toast(`<b>${r.name}</b>이(가) 태어났다! Lv${r.level}`, 'gold', 3500); this.renderPause(); };
+        b.onclick = () => { const r = st.fuse(base.id, mat.id, rec.result); this.forge = {}; Sfx.play('recruit'); this.game.ui.toast(`<b>${r.name}</b>이(가) 태어났다! Lv${r.level}`, 'gold', 3500); this.game.story.onFusion(rec.result); this.renderPause(); };
       } else {
         const skills = st.skillsOf(mat).filter((id) => !st.skillsOf(base).includes(id));
         box.innerHTML = `<div class="ws-q"><b>${mat.name}</b>의 스킬 하나를 <b>${base.name}</b>에게 <span class="dim">(계승 ${(base.inherited ?? []).length}/${MAX_INHERITED} · 넘치면 가장 오래된 것을 잊음)</span></div>`;
@@ -529,6 +543,27 @@ export class Menus {
       }
       const cancel = el('button', 'mn-btn small back', '다시 고르기', box);
       cancel.onclick = () => { this.forge = {}; Sfx.play('ui_back'); this.renderPause(); };
+    }
+  }
+
+  /** 수첩: the current objective, the sub-quests and the party's bonds. */
+  private renderJournal(body: HTMLElement) {
+    const st = State.current;
+    const story = this.game.story;
+    el('div', 'mn-sec', '지금 할 일', body);
+    el('div', 'jr-goal', `<b>${story.ch.goal()}</b><span class="dim">${st.chapterTitle()} 「노래하는 정오」 · 플레이 ${Math.floor(st.playTime / 60)}분</span>`, body);
+    el('div', 'mn-sec', '의뢰', body);
+    const qs = story.ch.quests().filter((q) => q.state !== 'locked');
+    const list = el('div', 'jr-list', undefined, body);
+    for (const q of qs) {
+      el('div', `jr-q ${q.state}`, `<div class="jr-t"><span class="jr-st">${{ open: '미수락', active: '진행 중', done: '완료' }[q.state as 'open']}</span>${q.title}<span class="dim"> — ${q.giver}</span></div>
+        <div class="jr-s">${q.state === 'done' ? '완료했다.' : q.step}</div><div class="jr-r dim">보수: ${q.reward}</div>`, list);
+    }
+    if (!qs.length) el('div', 'mn-note', '아직 받은 의뢰가 없습니다. 쉼표 역의 못판을 확인하세요.', list);
+    const mates = st.roster.filter((m) => m.id !== 'kai');
+    if (mates.length) {
+      el('div', 'mn-sec', '친밀도', body);
+      el('div', 'jr-bonds', mates.map((m) => { const b = st.bond[m.id] ?? 1; return `<span><b>${m.name}</b> ${'♥'.repeat(b)}${'♡'.repeat(3 - b)}</span>`; }).join(''), body);
     }
   }
 

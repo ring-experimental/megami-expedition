@@ -1,0 +1,35 @@
+/* Field dialogue (ui/dialogue.ts) — ink band across the bottom, portraits standing on it:
+   party on the left, others on the right; narration has no portrait and a dim band. */
+.fdlg { position: absolute; inset: 0; z-index: 34; pointer-events: auto; }
+.fdlg::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 46%; background: linear-gradient(to top, rgba(11, 9, 7, 0.75), transparent); pointer-events: none; }
+.fd-por { position: absolute; bottom: 120px; width: 300px; height: 360px; opacity: 0; transition: opacity 0.18s, transform 0.22s var(--ease-pop); pointer-events: none; }
+.fd-por.left { left: 4%; transform: translateX(-40px); }
+.fd-por.right { right: 4%; transform: translateX(40px); }
+.fd-por.on { opacity: 1; transform: none; }
+.fd-por .fp-in { position: absolute; inset: 0; display: grid; place-items: end center; overflow: hidden; clip-path: polygon(14% 0, 100% 0, 86% 100%, 0 100%);
+  background: linear-gradient(to top, color-mix(in srgb, var(--c) 50%, var(--ink-0)), transparent 85%); font: 900 120px var(--f-cmd); color: var(--bone); }
+.fd-por .fp-in img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 10%; }
+.fd-band { position: absolute; left: 6%; right: 6%; bottom: 26px; min-height: 120px; padding: 30px 60px 18px 54px; isolation: isolate; }
+.fd-band::before { content: ''; position: absolute; inset: 0; z-index: -1; background: rgba(11, 9, 7, 0.95); transform: skewX(-14deg); border-left: 5px solid var(--gold); border-right: 5px solid var(--gold); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6); }
+.fdlg.narr .fd-band::before { border-color: var(--bone-dim); }
+.fd-name { position: absolute; left: 40px; top: -16px; padding: 3px 22px; font: 900 19px var(--f-cmd); color: var(--ink-0); isolation: isolate; transform: rotate(-3deg); }
+.fd-name::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--gold-hi); transform: skewX(-14deg); }
+.fd-name.right { left: auto; right: 40px; transform: rotate(3deg); }
+.fd-name:empty { display: none; }
+.fd-text { font: 500 19px/1.65 var(--f-body); color: var(--bone); min-height: 2.6em; }
+.fdlg.narr .fd-text { color: var(--bone-dim); font-style: italic; text-align: center; }
+.fd-ghost { opacity: 0; }
+.fd-next { position: absolute; right: 54px; bottom: 12px; color: var(--gold-hi); font-size: 14px; opacity: 0; }
+.fdlg.done:not(.asking) .fd-next { opacity: 1; animation: bob 0.5s infinite alternate; }
+.fd-choices { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.fd-choices:empty { display: none; }
+.fd-opt { position: relative; isolation: isolate; align-self: flex-start; min-width: 300px; padding: 5px 26px 5px 16px; cursor: pointer; font: 700 16px var(--f-cmd); color: var(--bone); transition: transform 0.12s var(--ease-pop); }
+.fd-opt::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--ink-2); transform: skewX(-14deg); border-left: 3px solid var(--gold-dk); }
+.fd-opt .n { margin-right: 10px; font: 800 13px var(--f-num); color: var(--gold); }
+.fd-opt.sel { color: var(--ink-0); transform: translateX(10px); }
+.fd-opt.sel::before { background: var(--gold-hi); border-left-color: var(--ink-0); }
+.fd-opt.sel .n { color: var(--ink-0); }
+body.pad .fd-opt .n { display: none; }
+.fdlg.black { background: var(--ink-0); }
+.fdlg.black .fd-band::before { background: transparent; border-color: transparent; box-shadow: none; }
+.fdlg.black .fd-text { font-size: 22px; }

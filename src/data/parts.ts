@@ -14,25 +14,34 @@ export const CRYSTAL_ICON: Record<Element, string> = { phys: '◆', fire: '◆',
 
 /** Battle hooks a part can switch on (read through GameState.partEffects). */
 export type PartEffect =
-  | 'parryAp'     // parry: +1 extra AP
-  | 'counterUp'   // counter attacks ×1.5
-  | 'brkUp'       // break damage ×1.25
-  | 'talkMood'    // negotiation starts at mood +1
-  | 'startHaste'  // 가속 for the first 2 turns
-  | 'healUp'      // heals ×1.25
-  | 'heatVent'    // Kai: parries vent 10 more heat, overheat lasts a turn longer
-  | 'revealWeak'; // enemies' affinities are known from the start
+  | 'heatGain'      // Kai: 열압 builds ×1.2
+  | 'heatVent'      // Kai: parries vent 10 more 열압
+  | 'brkUp'         // break dealt +10%
+  | 'talkMood'      // negotiation starts at mood +1
+  | 'startSteam'    // battle starts with 증기압 +0.5
+  | 'parryAp'       // parry: +1 extra AP (once per turn)
+  | 'winHeal'       // victory: HP +5%
+  | 'holdupTalk'    // hold-up 포위 협상 +15%
+  | 'firstHitGuard' // first hit taken each battle −30%
+  | 'gaugeGain'     // 증기압 fills +15%
+  | 'overheatLight'; // Kai: 과열 scalds 3% instead of 5%
 
 export const EFFECT_DESC: Record<PartEffect, string> = {
-  parryAp: '패링 성공 시 AP +1 추가',
-  counterUp: '반격 피해 ×1.5',
-  brkUp: '브레이크 수치 ×1.25',
+  heatGain: '카이: 열압 상승량 ×1.2',
+  heatVent: '카이: 패링 시 열압 추가 −10',
+  brkUp: '주는 브레이크 +10%',
   talkMood: '협상 시작 시 분위기 +1',
-  startHaste: '전투 시작 2턴간 가속',
-  healUp: '회복량 ×1.25',
-  heatVent: '패링 시 열압 추가 방출 · 과열 1턴 연장',
-  revealWeak: '적의 약점·내성을 처음부터 안다',
+  startSteam: '전투 시작 시 증기압 +0.5칸',
+  parryAp: '패링 성공 시 AP +1 추가 (턴당 1회)',
+  winHeal: '전투 승리 시 HP 5% 회복',
+  holdupTalk: '홀드업 포위 협상 성공률 +15%',
+  firstHitGuard: '전투마다 첫 피격 피해 −30%',
+  gaugeGain: '증기압 게이지 충전량 +15%',
+  overheatLight: '카이 전용: 과열 중 HP 소모 5% → 3%',
 };
+
+/** Crystal cost; `any` = that many crystals of any element. */
+export type CrystalCost = Partial<Record<Element | 'any', number>>;
 
 export interface PartDef {
   id: string;
@@ -41,94 +50,101 @@ export interface PartDef {
   elem: Partial<Record<Element, number>>;
   stats?: Partial<Stats>;
   effect?: PartEffect;
+  /** only this hero can slot it */
+  only?: 'kai' | 'lyra';
   /** Crafting cost at the 공방 (crystals + 기어); parts without one are found only. */
-  craft?: { crystals: Partial<Record<Element, number>>; money: number };
+  craft?: { crystals: CrystalCost; money: number };
+  /** shop price (기어) when the shop stocks it */
+  price?: number;
 }
 
 export const PARTS: Record<string, PartDef> = {
-  piston_ring: { id: 'piston_ring', name: '피스톤 링', desc: '타격의 반동을 되밀어 주는 링.', elem: { phys: 1 }, stats: { atk: 4 }, craft: { crystals: { phys: 3 }, money: 40 } },
-  brass_plate: { id: 'brass_plate', name: '황동 판', desc: '얇게 두드린 황동 장갑.', elem: { phys: 1 }, stats: { def: 4 }, craft: { crystals: { phys: 3 }, money: 40 } },
-  boiler_coil: { id: 'boiler_coil', name: '보일러 코일', desc: '체온을 데워 버티게 해 주는 코일.', elem: { fire: 1 }, stats: { hp: 30 }, craft: { crystals: { fire: 3 }, money: 50 } },
-  ember_valve: { id: 'ember_valve', name: '불씨 밸브', desc: '불씨를 머금은 밸브. 화염 회로의 시작.', elem: { fire: 2 }, stats: { mag: 2 }, craft: { crystals: { fire: 4 }, money: 60 } },
-  cooling_fin: { id: 'cooling_fin', name: '냉각 핀', desc: '열을 빼앗는 얇은 날개들.', elem: { frost: 2 }, stats: { res: 3 }, craft: { crystals: { frost: 4 }, money: 60 } },
-  volt_coil: { id: 'volt_coil', name: '축전 코일', desc: '찌릿한 전하를 감아 둔 코일.', elem: { volt: 2 }, stats: { spd: 1 }, craft: { crystals: { volt: 4 }, money: 60 } },
-  aether_lens: { id: 'aether_lens', name: '에테르 렌즈', desc: '에테르의 흐름을 모으는 렌즈.', elem: { aether: 2 }, stats: { mag: 3 }, craft: { crystals: { aether: 4 }, money: 70 } },
-  beat_spring: { id: 'beat_spring', name: '맞박 태엽', desc: '상대의 박자에 맞춰 튀어 오르는 태엽.', elem: { phys: 1, aether: 1 }, effect: 'parryAp', craft: { crystals: { phys: 3, aether: 3 }, money: 120 } },
-  recoil_spring: { id: 'recoil_spring', name: '반동 스프링', desc: '받아 낸 힘을 그대로 되돌린다.', elem: { phys: 2 }, effect: 'counterUp', craft: { crystals: { phys: 6 }, money: 120 } },
-  wedge_gear: { id: 'wedge_gear', name: '쐐기 톱니', desc: '틈을 벌리는 쐐기 모양 톱니.', elem: { phys: 1, volt: 1 }, effect: 'brkUp', craft: { crystals: { phys: 3, volt: 3 }, money: 120 } },
-  silver_whistle: { id: 'silver_whistle', name: '은 호루라기', desc: '기령이 좋아하는 맑은 소리.', elem: { aether: 1 }, effect: 'talkMood', craft: { crystals: { aether: 5 }, money: 100 } },
-  escapement: { id: 'escapement', name: '가속 탈진기', desc: '시계의 탈진기를 빠르게 깎아 냈다.', elem: { volt: 1, frost: 1 }, effect: 'startHaste' },
-  warm_circuit: { id: 'warm_circuit', name: '온기 회로', desc: '치유의 공명을 데워 키운다.', elem: { aether: 1, fire: 1 }, effect: 'healUp', craft: { crystals: { aether: 3, fire: 3 }, money: 120 } },
-  heat_sink: { id: 'heat_sink', name: '방열판', desc: '카이의 보일러에 덧대는 방열판.', elem: { frost: 1 }, effect: 'heatVent' },
-  echo_compass: { id: 'echo_compass', name: '공명 나침반', desc: '상대의 떨림으로 약한 곳을 짚는다.', elem: { aether: 2 }, effect: 'revealWeak' },
+  p_steel_spring: { id: 'p_steel_spring', name: '강철 스프링', desc: '마르타가 준 음핀. 단단하게 버틴다.', elem: { phys: 2 }, stats: { def: 2 }, craft: { crystals: { phys: 4 }, money: 60 } },
+  p_heat_coil: { id: 'p_heat_coil', name: '열관 코일', desc: '보일러 열을 칼끝으로 보낸다.', elem: { fire: 2 }, stats: { atk: 2 }, effect: 'heatGain', price: 200, craft: { crystals: { fire: 4 }, money: 80 } },
+  p_cooling_fin: { id: 'p_cooling_fin', name: '냉각 핀', desc: '열을 빼앗는 얇은 날개들.', elem: { frost: 2 }, stats: { res: 2 }, effect: 'heatVent', price: 200, craft: { crystals: { frost: 4 }, money: 80 } },
+  p_copper_helix: { id: 'p_copper_helix', name: '구리 나선', desc: '찌릿한 전하를 감은 나선.', elem: { volt: 2, phys: 1 }, stats: { spd: 1 }, effect: 'brkUp' },
+  p_lens_shard: { id: 'p_lens_shard', name: '렌즈 조각', desc: '기령의 색이 조금 더 잘 보인다.', elem: { aether: 3 }, stats: { mag: 3 }, effect: 'talkMood' },
+  p_supercharger: { id: 'p_supercharger', name: '과급 톱니', desc: '시작부터 압력을 밀어 넣는다.', elem: { fire: 1, phys: 1 }, stats: { atk: 1 }, effect: 'startSteam' },
+  p_metronome_pin: { id: 'p_metronome_pin', name: '메트로놈 핀', desc: '상대의 박에 맞춰 튀어 오른다.', elem: { aether: 1, phys: 1 }, effect: 'parryAp' },
+  p_lamp_wick: { id: 'p_lamp_wick', name: '등심지', desc: '이긴 뒤에도 꺼지지 않는 작은 불.', elem: { fire: 1, aether: 1 }, stats: { hp: 20 }, effect: 'winHeal' },
+  p_quiet_bell: { id: 'p_quiet_bell', name: '작은 종추', desc: '멈춘 상대에게 말이 닿게 한다.', elem: { frost: 1, volt: 1 }, stats: { res: 1 }, effect: 'holdupTalk' },
+  p_strongbox_hinge: { id: 'p_strongbox_hinge', name: '금고 경첩', desc: '첫 충격만은 반드시 막아 낸다.', elem: { phys: 2, frost: 1 }, stats: { def: 3 }, effect: 'firstHitGuard' },
+  p_bellows_leather: { id: 'p_bellows_leather', name: '풀무 가죽', desc: '압력을 더 많이 모은다.', elem: { fire: 2, aether: 1 }, effect: 'gaugeGain' },
+  p_renner_cog: { id: 'p_renner_cog', name: '레너의 톱니', desc: '아버지의 책상에 남아 있던 톱니.', elem: { phys: 3, aether: 1 }, stats: { atk: 3 }, effect: 'overheatLight', only: 'kai' },
 };
 
 export interface BoardDef {
   name: string;
   /** slot positions on the board panel (0–100 coordinates) */
   pos: [number, number][];
-  /** lines of slot indices; arts check each line's element total separately */
+  /** lines of slot indices (in order: neighbours on a line harmonize) */
   lines: number[][];
   /** slots open at the start; the rest cost crystals */
   open: number[];
-  unlock: Record<number, Partial<Record<Element, number>>>;
+  unlock: Record<number, CrystalCost>;
 }
 
-/** Kai: one long line and a short one through the centre. Lyra: the reverse — her long line feeds magic. */
+/**
+ * 울림통 (music-box drum built into each hero): Kai has one long line of 5, Lyra three short
+ * lines of 2. Same-element parts in neighbouring slots of a line add +1 to that element (화음).
+ */
 export const BOARDS: Record<'kai' | 'lyra', BoardDef> = {
   kai: {
-    name: '울림쇠',
-    pos: [[50, 50], [72, 24], [88, 52], [70, 80], [28, 26], [13, 62]],
-    lines: [[0, 1, 2, 3], [0, 4, 5]],
-    open: [0, 1, 4],
-    unlock: { 2: { phys: 4 }, 3: { fire: 4, phys: 2 }, 5: { phys: 6 } },
+    name: '심장 울림통',
+    pos: [[12, 62], [30, 36], [50, 56], [70, 36], [88, 62]],
+    lines: [[0, 1, 2, 3, 4]],
+    open: [0, 1, 2],
+    unlock: { 3: { phys: 2 }, 4: { any: 4 } },
   },
   lyra: {
-    name: '각인 고리',
-    pos: [[50, 50], [28, 24], [12, 54], [72, 24], [88, 52], [70, 80]],
-    lines: [[0, 1, 2], [0, 3, 4, 5]],
-    open: [0, 1, 3],
-    unlock: { 2: { aether: 4 }, 4: { frost: 3, volt: 3 }, 5: { aether: 6 } },
+    name: '지팡이 울림통',
+    pos: [[20, 26], [20, 74], [50, 26], [50, 74], [80, 26], [80, 74]],
+    lines: [[0, 1], [2, 3], [4, 5]],
+    open: [0, 2, 4],
+    unlock: { 1: { any: 2 }, 3: { any: 2 }, 5: { any: 2 } },
   },
 };
 
-/** Arts: magic usable by whoever has the line totals. Lyra's arts also leave 회로 각인. */
-export interface ArtDef { skill: SkillDef; need: Partial<Record<Element, number>> }
-const art = (id: string, name: string, desc: string, need: Partial<Record<Element, number>>, s: Partial<SkillDef>): ArtDef => ({
+/** Arts: each hero's own magic, opened while one line's element total reaches `need`. */
+export interface ArtDef { who: 'kai' | 'lyra'; skill: SkillDef; need: Partial<Record<Element, number>> }
+const art = (who: 'kai' | 'lyra', id: string, name: string, desc: string, need: Partial<Record<Element, number>>, s: Partial<SkillDef>): ArtDef => ({
+  who,
   need,
-  skill: { id, name, desc, ap: 2, target: 'enemy', kind: 'magic', element: 'aether', power: 1.4, hits: 1, qte: 1, breakPower: 10, anim: 'cast', melee: false, ...s },
+  skill: { id, name, desc, ap: 3, target: 'enemy', kind: 'phys', element: 'phys', power: 1.4, hits: 1, qte: 1, breakPower: 10, anim: 'slash', melee: true, ...s },
 });
 export const ARTS: ArtDef[] = [
-  art('art_flare', '플레어', '불꽃 덩이를 던진다.', { fire: 2 }, { element: 'fire', power: 1.45, status: { id: 'burn', turns: 2, chance: 0.3 } }),
-  art('art_blaze', '블레이즈', '적 전체를 불길로 휩쓴다.', { fire: 4 }, { element: 'fire', target: 'allEnemies', ap: 4, power: 0.95 }),
-  art('art_icicle', '아이시클', '얼음 송곳을 꽂는다.', { frost: 2 }, { element: 'frost', power: 1.45, breakPower: 14 }),
-  art('art_spark', '스파크', '번개 한 줄기를 떨어뜨린다.', { volt: 2 }, { element: 'volt', power: 1.45 }),
-  art('art_ether_ray', '에테르 레이', '응축한 에테르 광선.', { aether: 4 }, { element: 'aether', ap: 3, power: 2.1 }),
-  art('art_cure', '큐어', '아군 하나의 HP를 회복한다.', { aether: 2 }, { kind: 'heal', target: 'ally', element: 'aether', power: 1.0, qte: 1, breakPower: 0 }),
-  art('art_aegis', '에기스', '아군 전체 3턴간 방어↑.', { phys: 3 }, { kind: 'buff', target: 'allAllies', element: 'phys', power: 0, breakPower: 0, status: { id: 'defUp', turns: 3, chance: 1 } }),
-  art('art_clock_up', '클록 업', '아군 하나에 3턴간 가속.', { volt: 2, frost: 1 }, { kind: 'buff', target: 'ally', element: 'volt', power: 0, breakPower: 0, status: { id: 'haste', turns: 3, chance: 1 } }),
+  art('kai', 'boiler_cleave', '보일러 내려베기', '보일러 열을 실은 내려베기. 열압 +25, 확률로 화상.', { fire: 3 }, { element: 'fire', power: 1.6, breakPower: 25, anim: 'heavy', heat: 25, status: { id: 'burn', turns: 2, chance: 0.3 } }),
+  art('kai', 'rivet_rush', '리벳 연타', '빠른 다섯 찌르기.', { phys: 4 }, { power: 0.4, hits: 5, qte: 3, breakPower: 20, anim: 'thrust' }),
+  art('kai', 'arc_edge', '전호 베기', '칼날에 번개를 감는다.', { volt: 3 }, { element: 'volt', power: 1.4, breakPower: 30 }),
+  art('kai', 'frost_quench', '담금질', '냉기로 보일러를 식힌다. 열압 −40, 2턴간 방어↑.', { frost: 3 }, { ap: 1, target: 'self', kind: 'buff', element: 'frost', power: 0, breakPower: 0, anim: 'cast', melee: false, heat: -40, status: { id: 'defUp', turns: 2, chance: 1, self: true } }),
+  art('lyra', 'ember_glyph', '불씨 각인', '화 문양을 남기는 불씨. 회로 결합의 재료.', { fire: 2 }, { ap: 2, kind: 'magic', element: 'fire', power: 1.3, anim: 'cast', melee: false }),
+  art('lyra', 'spark_needle', '전침', '번개 바늘 한 줄기.', { volt: 2 }, { ap: 2, kind: 'magic', element: 'volt', power: 1.2, breakPower: 12, anim: 'cast', melee: false }),
+  art('lyra', 'rime_lock', '서리 자물쇠', '대상의 다음 턴을 크게 늦춘다.', { frost: 3 }, { kind: 'magic', element: 'frost', power: 1.0, breakPower: 15, anim: 'cast', melee: false, delay: 40 }),
+  art('lyra', 'aegis_chord', '보호 화음', '아군 전체 3턴간 방어↑.', { aether: 3 }, { target: 'allAllies', kind: 'buff', element: 'aether', power: 0, breakPower: 0, anim: 'cast', melee: false, status: { id: 'defUp', turns: 3, chance: 1 } }),
 ];
 export const ART_SKILLS: Record<string, SkillDef> = Object.fromEntries(ARTS.map((a) => [a.skill.id, a.skill]));
 // arts resolve through the same skill table as everything else (battle menus, level-up notes)
 Object.assign(SKILLS, ART_SKILLS);
 
-/** Sum of element values per line for a board loadout. */
+/** Element totals per line, including +1 for each same-element pair in neighbouring slots. */
 export function lineTotals(board: BoardDef, slots: (string | null)[]) {
   return board.lines.map((line) => {
     const t: Partial<Record<Element, number>> = {};
-    for (const i of line) {
+    line.forEach((i, k) => {
       const p = slots[i] ? PARTS[slots[i]!] : null;
-      if (!p) continue;
+      if (!p) return;
       for (const [e, v] of Object.entries(p.elem)) t[e as Element] = (t[e as Element] ?? 0) + (v ?? 0);
-    }
+      const prev = k > 0 && slots[line[k - 1]] ? PARTS[slots[line[k - 1]]!] : null;
+      if (prev) for (const e of Object.keys(p.elem) as Element[]) if (prev.elem[e]) t[e] = (t[e] ?? 0) + 1;
+    });
     return t;
   });
 }
 
-/** Arts whose requirement is met by at least one line. */
-export function artsFor(board: BoardDef, slots: (string | null)[]) {
-  const lines = lineTotals(board, slots);
-  return ARTS.filter((a) => lines.some((t) => Object.entries(a.need).every(([e, v]) => (t[e as Element] ?? 0) >= (v ?? 0))));
+/** The hero's arts whose requirement is met by at least one line. */
+export function artsFor(hero: 'kai' | 'lyra', slots: (string | null)[]) {
+  const lines = lineTotals(BOARDS[hero], slots);
+  return ARTS.filter((a) => a.who === hero && lines.some((t) => Object.entries(a.need).every(([e, v]) => (t[e as Element] ?? 0) >= (v ?? 0))));
 }
 
 /** 속성 결정 a defeated species leaves: its first elemental move's element (else 강철), more for tougher tiers. */

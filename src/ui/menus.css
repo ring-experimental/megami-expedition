@@ -22,7 +22,7 @@
 .mn-tab:hover::before, .mn-btn:hover::before, body.navfocus .mn-tab.pad-focus::before, body.navfocus .mn-btn.pad-focus::before { border-left-color: var(--gold-hi); }
 .mn-tab.on { transform: translateX(22px) scale(1.05); color: var(--ink-0); }
 .mn-tab.on::before { background: var(--gold-hi); border-left-color: var(--ink-0); }
-.mn-tabhint { display: flex; align-items: center; gap: 2px; margin: 4px 0 0 calc(6 * -8px + 48px); font: 400 13px var(--f-body); color: var(--bone-dim); }
+.mn-tabhint { display: flex; align-items: center; gap: 2px; margin: 4px 0 0 calc(9 * -8px + 48px); font: 400 13px var(--f-body); color: var(--bone-dim); }
 .mn-tabhint span { margin-left: 6px; }
 .mn-foot { left: 34px; bottom: 34px; display: flex; flex-direction: column; gap: 8px; }
 .mn-btn.small { height: 34px; width: 210px; font-size: 14px; color: var(--bone-dim); }
@@ -248,3 +248,21 @@ body.navfocus .pause-menu .pad-focus { outline: none; box-shadow: none; }
 .ws-mon .bs-chip { width: 40px; height: 40px; }
 .ws-result { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 0 10px; }
 .ws-q { flex-basis: 100%; font: 400 14px var(--f-body); }
+.ws-mon.off { opacity: 0.5; }
+.ws-bond { display: block; font: 700 11px var(--f-num); color: var(--gold); letter-spacing: 0.1em; }
+
+/* ---------- 수첩 ---------- */
+.jr-goal { display: flex; flex-direction: column; gap: 2px; padding: 8px 22px; margin-left: 10px; max-width: 760px; font: 800 18px var(--f-cmd); color: var(--gold-hi); background: var(--ink-1); border-left: 3px solid var(--gold); }
+.jr-goal .dim { font: 400 12px var(--f-body); }
+.jr-list { display: flex; flex-direction: column; gap: 6px; max-width: 760px; padding-left: 10px; }
+.jr-q { padding: 6px 18px; background: var(--ink-1); border-left: 3px solid var(--gold-dk); }
+.jr-q.active { border-left-color: var(--gold-hi); }
+.jr-q.done { opacity: 0.55; }
+.jr-t { font: 800 15px var(--f-cmd); color: var(--bone); }
+.jr-t .dim { font: 400 12px var(--f-body); }
+.jr-st { margin-right: 8px; padding: 0 6px; font: 800 11px var(--f-cmd); color: var(--ink-0); background: var(--gold); }
+.jr-q.done .jr-st { background: var(--bone-dim); }
+.jr-s { margin-top: 2px; font: 400 13px/1.5 var(--f-body); color: var(--bone); }
+.jr-r { font: 400 12px var(--f-body); }
+.jr-bonds { display: flex; flex-wrap: wrap; gap: 8px 22px; padding-left: 10px; font: 400 14px var(--f-body); color: var(--gold); }
+.jr-bonds b { color: var(--bone); font-weight: 800; }

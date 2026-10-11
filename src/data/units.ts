@@ -33,7 +33,7 @@ export const HEROES: Record<'kai' | 'lyra', HeroDef> = {
   },
 };
 
-export type PersonalityId = 'timid' | 'childish' | 'proud' | 'curious' | 'honorable' | 'greedy';
+export type PersonalityId = 'timid' | 'childish' | 'proud' | 'curious' | 'honorable' | 'greedy' | 'lonely';
 export type Tier = 'weak' | 'strong' | 'elite';
 
 export interface EnemyMove {
@@ -52,6 +52,10 @@ export interface EnemyMove {
   weight: number;
   /** Ground shockwave: only a jump avoids it (parry / dodge don't). */
   jump?: boolean;
+  /** Boss phase this move belongs to (1: HP > 60%, 2: below); unset = any phase. */
+  phase?: 1 | 2;
+  /** Self move usable once per battle, only below this HP ratio. */
+  onceBelow?: number;
   status?: { id: StatusId; turns: number; chance: number; self?: boolean };
   /** self-heal ratio for 'self' moves */
   heal?: number;
@@ -87,6 +91,8 @@ export interface SpeciesDef {
   hover?: number;
   /** Negotiation gate. */
   talkGate?: 'brokenOrHalf';
+  /** Species' own negotiation lines (override the personality's). */
+  talk?: Partial<Record<'greet' | 'greetBroken' | 'like' | 'neutral' | 'dislike' | 'angry' | 'join' | 'refuse', string[]>>;
   color: string;
 }
 
@@ -176,6 +182,103 @@ export const SPECIES: Record<string, SpeciesDef> = {
     ],
     allySkills: ['furnace_punch', 'steam_burst'], lateSkill: { id: 'meltdown', level: 13 }, xp: 200, money: 150, drops: [{ item: 'heart', chance: 1 }, { item: 'capsule', chance: 1 }],
     height: 3.4, radius: 1.4, talkGate: 'brokenOrHalf', color: '#ffb347',
+  },
+  // --- chapter 1 (docs/story/CHAPTER1.md §5) ---------------------------------
+  prism_moth: {
+    id: 'prism_moth', name: '프리즘 나방', desc: '스테인드글라스 날개로 빛을 모으는 나방. 무엇이 빛을 굽히는지 늘 궁금해한다.',
+    battleScale: 1.3, model: 'prism_moth', archetype: 'wisp', scale: 1, tier: 'weak', level: 5,
+    stats: { hp: 76, atk: 7, mag: 19, def: 6, res: 15, spd: 16 },
+    affinity: { phys: 1.5, volt: 1.25, aether: 0.5 }, breakMax: 55, personality: 'curious',
+    field: { speed: 3.8, detect: 12, attack: 'projectile', windup: 0.8, breakMax: 42, poise: 0 },
+    moves: [
+      { id: 'refract_beam', name: '굴절 광선', kind: 'ranged', element: 'aether', stat: 'mag', power: 1.15, hits: [0], windup: [0.7, 1.2], weight: 3 },
+      { id: 'crystal_dust', name: '결정 인분', kind: 'ranged', element: 'frost', stat: 'mag', power: 0.45, hits: [0, 0.36], windup: [0.9, 1.2], allTargets: true, weight: 2 },
+      { id: 'flash_veil', name: '섬광', kind: 'self', element: 'aether', stat: 'mag', power: 0, hits: [], windup: [0.4, 0.4], weight: 1, status: { id: 'haste', turns: 2, chance: 1, self: true } },
+    ],
+    allySkills: ['prism_veil', 'spectrum_dart'], xp: 24, money: 20, drops: [{ item: 'capsule', chance: 0.15 }],
+    height: 1.6, radius: 0.6, hover: 1.2, color: '#7fd6e8',
+    talk: {
+      greet: ['반짝… 너희, 빛을 어떻게 굽히는지 알아? 나 아직 몰라.'],
+      greetBroken: ['날개에 금이… 그래도 빛이 들어오는 각도가 궁금해…'],
+      like: ['오오! 그런 이유였구나. 날개가 한 칸 밝아졌어.'],
+      dislike: ['그건 빛이 아니라 그림자 같은 대답이야.'],
+      join: ['너희 곁에선 처음 보는 빛이 많겠지? 같이 갈래!'],
+      refuse: ['아직 관찰이 덜 끝났어. 다음 빛에 다시 와.'],
+    },
+  },
+  bellows_toad: {
+    id: 'bellows_toad', name: '풀무 두꺼비', desc: '가죽 풀무 몸으로 숨을 쉬는 두꺼비. 연료라면 석탄이든 기어든 삼키려 든다.',
+    battleScale: 1.5, model: 'bellows_toad', archetype: 'slime', scale: 1, tier: 'weak', level: 6,
+    stats: { hp: 118, atk: 15, mag: 14, def: 9, res: 7, spd: 8 },
+    affinity: { frost: 1.5, fire: 0.5 }, breakMax: 70, personality: 'greedy',
+    field: { speed: 3.0, detect: 9, attack: 'lunge', windup: 0.8, breakMax: 50, poise: 0 },
+    moves: [
+      { id: 'puff_slam', name: '부풀어 박치기', kind: 'melee', element: 'phys', stat: 'atk', power: 1.2, hits: [0], windup: [0.9, 1.5], weight: 3 },
+      { id: 'bellows_breath', name: '풀무 숨', kind: 'ranged', element: 'fire', stat: 'mag', power: 1.0, hits: [0], windup: [0.9, 1.3], weight: 2, status: { id: 'burn', turns: 2, chance: 0.3 } },
+      { id: 'ash_spit', name: '재 뱉기', kind: 'ranged', element: 'fire', stat: 'mag', power: 0.45, hits: [0, 0.3], windup: [0.6, 0.9], weight: 2 },
+      { id: 'belly_flop', name: '쿵 착지', kind: 'melee', element: 'phys', stat: 'atk', power: 0.8, hits: [0], windup: [1.1, 1.5], allTargets: true, jump: true, weight: 2 },
+    ],
+    allySkills: ['bellows_pump', 'ember_burp'], xp: 30, money: 34, drops: [{ item: 'tonic', chance: 0.3 }],
+    height: 0.9, radius: 0.7, color: '#a8643a',
+    talk: {
+      greet: ['꾸르륵… 석탄 냄새가 나는데? 한 덩이만 주면 생각해 보지.'],
+      greetBroken: ['풀무가… 바람이 샌다… 기어 하나만… 꾸르륵…'],
+      like: ['꾸르… 배가 조금 따뜻해졌다.'],
+      dislike: ['말로는 배가 안 불러! 꾸르륵!'],
+      join: ['너희를 따라가면 연료 냄새가 안 끊기겠지. 좋아, 간다.'],
+      refuse: ['부족해. 아직 한참 부족해.'],
+    },
+  },
+  strongbox_tortoise: {
+    id: 'strongbox_tortoise', name: '금고 거북', desc: '폐공장의 금고가 깨어난 거북. 백 년 전 받은 "열지 마라"는 말을 아직 지킨다.',
+    battleScale: 1.0, model: 'strongbox_tortoise', archetype: 'beetle', scale: 1, tier: 'strong', level: 8,
+    stats: { hp: 640, atk: 22, mag: 9, def: 26, res: 10, spd: 6 },
+    affinity: { volt: 1.5, aether: 1.25, phys: 0.6 }, breakMax: 170, personality: 'timid',
+    field: { speed: 2.4, detect: 10, attack: 'lunge', windup: 1.0, breakMax: 120, poise: 3 },
+    moves: [
+      { id: 'shell_ram', name: '금고 박치기', kind: 'melee', element: 'phys', stat: 'atk', power: 1.4, hits: [0], windup: [1.0, 1.7], weight: 3 },
+      { id: 'coin_burst', name: '동전 산탄', kind: 'ranged', element: 'phys', stat: 'atk', power: 0.42, hits: [0, 0.28, 0.56, 0.84], windup: [0.8, 1.1], weight: 2 },
+      { id: 'vault_drop', name: '금고 낙하', kind: 'melee', element: 'phys', stat: 'atk', power: 1.15, hits: [0], windup: [1.3, 1.8], allTargets: true, jump: true, weight: 2 },
+      { id: 'lock_down', name: '자물쇠 잠금', kind: 'self', element: 'phys', stat: 'atk', power: 0, hits: [], windup: [0.5, 0.5], weight: 1, onceBelow: 0.5, status: { id: 'defUp', turns: 3, chance: 1, self: true } },
+    ],
+    allySkills: ['vault_wall', 'coin_volley'], xp: 120, money: 90, drops: [{ item: 'hi_tonic', chance: 0.5 }],
+    height: 1.6, radius: 1.4, color: '#3b3f46',
+    talk: {
+      greet: ['오, 오지 마! 문 안 열려! 안 열린다고!'],
+      greetBroken: ['다이얼이… 헛돌아… 열면 안 되는데…'],
+      like: ['…정말? 맡아 준다고? 그런 말 처음 들어.'],
+      dislike: ['히익! 억지로 열려고 하지 마!'],
+      join: ['나, 처음으로 문 열어 볼래. 너희 쪽으로.'],
+      refuse: ['미안… 아직은 잠가 둘래.'],
+    },
+  },
+  grand_carillon: {
+    id: 'grand_carillon', name: '그란 카리용', desc: '에테르 평원 탑의 탑심. 50년 동안 정숙만 울리도록 강요받은 종.',
+    battleScale: 0.9, model: 'grand_carillon', archetype: 'golem', scale: 1, tier: 'elite', level: 11,
+    stats: { hp: 1650, atk: 30, mag: 24, def: 20, res: 18, spd: 9 },
+    affinity: { frost: 1.5, volt: 1.25, phys: 0.5, fire: 0.5 }, breakMax: 260, personality: 'lonely', talkGate: 'brokenOrHalf',
+    field: { speed: 0, detect: 0, attack: 'lunge', windup: 1.2, breakMax: 200, poise: 3 },
+    moves: [
+      { id: 'hammer_peal', name: '해머 연타', kind: 'melee', element: 'phys', stat: 'atk', power: 0.42, hits: [0, 0.3, 0.6, 0.9, 1.3, 1.6], windup: [1.0, 1.4], weight: 3, phase: 1 },
+      { id: 'hammer_offbeat', name: '엇박 연타', kind: 'melee', element: 'phys', stat: 'atk', power: 0.45, hits: [0, 0.3, 0.95, 1.1, 1.75, 1.9], windup: [1.0, 1.4], weight: 3, phase: 2 },
+      { id: 'noon_toll', name: '정오의 타종', kind: 'melee', element: 'phys', stat: 'atk', power: 1.3, hits: [0], windup: [1.4, 2.0], allTargets: true, jump: true, weight: 2, phase: 1 },
+      { id: 'noon_toll2', name: '정오의 타종', kind: 'melee', element: 'phys', stat: 'atk', power: 1.1, hits: [0, 0.9], windup: [1.4, 2.0], allTargets: true, jump: true, weight: 2, phase: 2 },
+      { id: 'pendulum_sweep', name: '진자 베기', kind: 'melee', element: 'phys', stat: 'atk', power: 0.75, hits: [0, 0.7], windup: [1.0, 1.3], allTargets: true, weight: 2 },
+      { id: 'hush_wave', name: '침묵 파동', kind: 'ranged', element: 'aether', stat: 'mag', power: 0.8, hits: [0], windup: [0.9, 1.2], allTargets: true, weight: 2, phase: 2, status: { id: 'atkDown', turns: 2, chance: 0.6 } },
+      { id: 'rewind_spin', name: '역회전', kind: 'self', element: 'phys', stat: 'atk', power: 0, hits: [], windup: [0.5, 0.5], weight: 1, onceBelow: 0.4, heal: 0.12 },
+    ],
+    allySkills: ['noon_bell', 'peal_strike'], xp: 600, money: 300, drops: [{ item: 'heart', chance: 1 }, { item: 'hi_tonic', chance: 1 }],
+    height: 4.2, radius: 2.0, hover: 0.6, color: '#b08d3c',
+    talk: {
+      greet: ['…누구냐. 아무도 올라오지 않는 곳인데.', '또 고치러 왔나. 고칠 데는 없다. 그냥… 조용할 뿐이다.'],
+      greetBroken: ['…멈췄군. 이대로 멈추는 것도, 나쁘지 않다.'],
+      like: ['…그 말, 오랜만에 듣는다.', '그래. 그렇게 말해 주는 자가 있었지.'],
+      neutral: ['…그런가.', '말은 쉽지.'],
+      dislike: ['빈말이군. 메아리처럼 텅 비었어.', '그런 말은 종소리보다 빨리 사라진다.'],
+      angry: ['나가라. 혼자가 낫다!'],
+      join: ['…곁에 있겠다는 말, 믿어 보마.'],
+      refuse: ['아직은 혼자인 쪽이 덜 아프다.'],
+    },
   },
 };
 

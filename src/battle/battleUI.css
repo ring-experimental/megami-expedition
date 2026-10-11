@@ -451,3 +451,12 @@
 .allout-flash { position: absolute; inset: 0; z-index: 23; pointer-events: none; display: grid; place-items: center; }
 .allout-flash span { font: 400 120px var(--f-ink); color: var(--gold-hi); text-shadow: 8px 8px 0 #000; transform: rotate(-8deg); animation: huTitle 0.4s var(--ease-pop) backwards; }
 .battle-holdup .cmd-blades { z-index: 22; }
+
+/* 증기압 게이지 (machine language): three brass cells above the party portraits */
+.steam-gauge { position: absolute; left: 26px; bottom: 196px; display: flex; align-items: center; gap: 8px; padding: 3px 14px 3px 10px; font: 800 12px var(--f-cmd); color: var(--bone); isolation: isolate; }
+.steam-gauge::before { content: ''; position: absolute; inset: 0; z-index: -1; background: rgba(11, 9, 7, 0.85); transform: skewX(-14deg); border-left: 3px solid var(--gold); }
+.steam-gauge .sg-cells { display: flex; gap: 4px; }
+.steam-gauge i { position: relative; width: 34px; height: 10px; background: var(--ink-2); outline: 1px solid var(--gold-dk); transform: skewX(-20deg); overflow: hidden; }
+.steam-gauge i::after { content: ''; position: absolute; inset: 0; width: calc(var(--f, 0) * 100%); background: var(--gold); transition: width 0.25s; }
+.steam-gauge i.full::after { background: var(--gold-hi); box-shadow: 0 0 8px var(--gold-hi); }
+.battle-result .steam-gauge, .battle-talk .steam-gauge { display: none; }

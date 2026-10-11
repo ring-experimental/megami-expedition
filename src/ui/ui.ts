@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { el, worldToScreen } from '../core/utils';
 import type { InputState } from '../core/input';
 import { bindInput } from './glyph';
-import { gearSvg } from './ornaments';
+import { FEATHER_SVG, gearSvg } from './ornaments';
+import { artSrc } from './art';
 
 /** Shared DOM overlay helpers. */
 export class UI {
@@ -122,6 +123,20 @@ export class UI {
     e.classList.add('on');
     clearTimeout(this.saveIndT);
     this.saveIndT = window.setTimeout(() => e.classList.add('out'), 1600);
+  }
+
+  /** The goddess's feathers drift down (UI bible §1: grace only — recruit, level-up, the chapter's one big moment). */
+  feathers(n = 14) {
+    const layer = el('div', 'feathers', undefined, this.topLayer);
+    const art = artSrc('ui/feather');
+    for (let i = 0; i < n; i++) {
+      const f = el('div', 'feather', art ? `<img src="${art}" alt="" draggable="false">` : FEATHER_SVG, layer);
+      f.style.left = `${(n <= 5 ? 20 + (i / Math.max(1, n - 1)) * 60 : 8 + Math.random() * 84)}%`;
+      f.style.setProperty('--d', `${(Math.random() * (n <= 5 ? 2.5 : 0.9)).toFixed(2)}s`);
+      f.style.setProperty('--s', (0.6 + Math.random() * 0.7).toFixed(2));
+      f.style.setProperty('--sw', `${((Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * 50)).toFixed(0)}px`);
+    }
+    setTimeout(() => layer.remove(), n <= 5 ? 6000 : 3400);
   }
 
   flash(color = '#fff', ms = 180) {

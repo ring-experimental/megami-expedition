@@ -27,6 +27,35 @@ export interface BattleRequest {
   leaderHp: number;
   advantage: 'party' | 'enemy' | 'none';
   source: FieldEnemy | null;
+  /** Story battle options (story/*.ts). */
+  event?: BattleEvent;
+}
+
+/** Story-side tweaks for one battle. */
+export interface BattleEvent {
+  id: string;
+  /** display names per formation slot (named individuals) */
+  names?: (string | undefined)[];
+  /** enemies start broken (a cowering creature) */
+  broken?: boolean;
+  /** hush-needled: no answer to talk */
+  hushed?: boolean;
+  /** scripted negotiation (tutorial) */
+  scriptTalk?: 'tick';
+  noFlee?: boolean;
+  /** sq03: break the enemy with ≥3 parries and no items → it yields */
+  duel?: boolean;
+  /** lines the enemy speaks in battle: entering phase 2, all hits parried, cornered before a talk */
+  lines?: { p2?: string; parried?: string; cornered?: [string, string][] };
+}
+
+/** What happened, for the story (read after start() resolves). */
+export interface BattleReport {
+  recruited: string[];
+  holdup: 'allout' | 'talk' | 'extort' | 'none' | null;
+  parries: number;
+  itemsUsed: number;
+  duelWon: boolean;
 }
 export type BattleResult = 'victory' | 'fled' | 'defeat' | 'retry';
 
@@ -35,7 +64,11 @@ type Cmd =
   | { kind: 'skill'; skill: SkillDef; targets: BUnit[] }
   | { kind: 'item'; item: string; target: BUnit }
   | { kind: 'talk'; target: BUnit }
+  | { kind: 'combo'; combo: Combo; target: BUnit }
   | { kind: 'flee' };
+
+/** 연계기: two members strike together, paid from the 증기압 게이지. */
+interface Combo { id: string; name: string; desc: string; cost: number; partner: string }
 
 const ENEMY_Z = -4.4;
 const PARTY_Z = 4.6;
@@ -69,6 +102,10 @@ export class BattleMode {
   private actionTempo = 1;
   /** a weakness hit this action already pulled the actor's next turn forward */
   private pulled = false;
+  report: BattleReport = { recruited: [], holdup: null, parries: 0, itemsUsed: 0, duelWon: false };
+  /** 증기압 게이지 (0–3 칸), shared by the party; spent on 연계기. */
+  gauge = 0;
+  private phase2Said = false;
   /** Hold-up already offered for the current all-broken state (re-arms once any enemy recovers). */
   private holdUpSpent = false;
   /** Feats tallied for the tactical bonus (victory EXP / 기어 multiplier). */
@@ -127,6 +164,9 @@ export class BattleMode {
     this.req = req;
     this.recruited = [];
     this.feats = { parries: 0, counters: 0, weak: 0, breaks: 0, dmgTaken: 0, partyTurns: 0 };
+    this.report = { recruited: [], holdup: null, parries: 0, itemsUsed: 0, duelWon: false };
+    this.gauge = 0;
+    this.phase2Said = false;
     this.turnNo = 0;
     this.slotBonus.clear();
     this.holdUpSpent = false;
@@ -149,6 +189,10 @@ export class BattleMode {
     req.formation.forEach((id, i) => {
       const sp = SPECIES[id];
       const u = new BUnit('enemy', { species: sp, hpRatio: i === 0 ? req.leaderHp : 1 });
+      const ev = req.event;
+      if (ev?.names?.[i]) u.name = ev.names[i]!;
+      if (ev?.hushed) u.hushed = true;
+      if (ev?.broken) { u.broken = true; u.brk = u.brkMax; }
       u.setHome(new THREE.Vector3(ex[i] * (sp.radius * sp.battleScale > 1 ? 1.3 : 1), 0, ENEMY_Z - (i === 1 && n === 3 ? 0.9 : 0) - (sp.radius * sp.battleScale > 1.2 ? 0.8 : 0)), 0);
       st.bestiary[id].seen = true;
       this.units.push(u);
@@ -156,10 +200,7 @@ export class BattleMode {
     for (const u of this.units) this.scene.add(u.obj);
     patchObject(this.scene); // cloned unit materials lose onBeforeCompile
     // 부품 effects that act at the start
-    for (const p of this.party) if (p.effects.has('startHaste')) p.addStatus('haste', 2);
-    if (this.party.some((p) => p.effects.has('revealWeak'))) {
-      for (const e of this.enemies) { const b = st.bestiary[e.species!.id]; for (const k of Object.keys(e.species!.affinity)) if (!b.known.includes(k as Element)) b.known.push(k as Element); }
-    }
+    if (this.party.some((p) => p.effects.has('startSteam'))) this.gauge = 0.5;
 
     // initial turn times (CTB)
     for (const u of this.units) u.ct = (100 / u.speed()) * rand(0.15, 0.9);
@@ -183,6 +224,7 @@ export class BattleMode {
     this.game.ui.camera = this.camera;
     this.bui.show(true);
     this.bui.setSpeed(st0().battleSpeed);
+    this.bui.setGauge(this.gauge);
     this.updateOrder();
 
     // intro camera sweep
@@ -226,6 +268,7 @@ export class BattleMode {
   }
 
   private checkEnd(): BattleResult | null {
+    if (this.report.duelWon) return 'victory';
     if (this.enemies.every((e) => !e.alive)) return 'victory';
     if (this.party.every((p) => p.ko)) return 'defeat';
     return null;
@@ -301,7 +344,7 @@ export class BattleMode {
     if ([...this.slotBonus.values()].some(Boolean)) await this.tip('bonus');
     this.bui.setActive(u);
     if (u.has('overheat')) {
-      const d = Math.max(1, Math.round(u.maxHp * 0.05));
+      const d = Math.max(1, Math.round(u.maxHp * (u.effects.has('overheatLight') ? 0.03 : 0.05)));
       u.hp = Math.max(1, u.hp - d); // the boiler scalds but never knocks Kai out
       this.fx.smoke.burst(u.centerPos(), 14, { color: 0xf4f1ea, speed: 2.5, up: 1.5, life: 0.8, size: 0.5, sizeEnd: 1.6, alpha: 0.5 });
       this.game.ui.popup(u.centerPos(), `${d}`, 'dmg burn');
@@ -376,6 +419,7 @@ export class BattleMode {
         case 'attack': await this.doAttack(u, cmd.target); return 'done';
         case 'skill': await this.doSkill(u, cmd.skill, cmd.targets); return 'done';
         case 'item': await this.doItem(u, cmd.item, cmd.target); return 'done';
+        case 'combo': await this.doCombo(u, cmd.combo, cmd.target); return 'done';
         case 'talk': {
           const consumed = await this.doTalk(u, cmd.target);
           if (consumed) return 'done';
@@ -393,16 +437,21 @@ export class BattleMode {
     const st = State.current;
     const enemies = this.enemies.filter((e) => e.alive);
     const title = `<span style="color:${u.color}">${u.name}</span>의 턴 <span class="ap">AP ${u.ap}</span>`;
-    const top = await this.bui.menuSelect<string>(title, [
+    const ev = this.req.event;
+    // talking unlocks in the story (m03) — the tutorial talk itself is the exception
+    const canTalk = !!st.flag('ch1_tick_recruited') || ev?.scriptTalk === 'tick';
+    const combos = this.availableCombos(u);
+    const cmds: MenuItem<string>[] = [
       { label: `${icon('cmd', 'attack')}공격`, right: 'AP +1', desc: u.hero?.basicMelee === false || u.species?.archetype === 'wisp' ? '원거리 기본 공격. AP +1' : '기본 공격. AP +1', value: 'attack' },
       { label: `${icon('cmd', 'skill')}스킬`, right: '▶', desc: 'AP를 소모하는 스킬. 사용 중 타이밍 입력(QTE)으로 위력 상승.', value: 'skill' },
-      { label: `${icon('cmd', 'talk')}대화`, right: '▶', desc: '적과 협상해 동료로 영입을 시도한다. (턴 소모)', value: 'talk' },
+      ...(combos.length ? [{ label: `${icon('cmd', 'skill')}연계`, right: `${this.gauge.toFixed(1)}칸`, desc: '증기압을 써서 동료와 연계기를 쓴다.', value: 'combo', disabled: !combos.some((c) => c.cost <= this.gauge) }] : []),
+      ...(canTalk ? [{ label: `${icon('cmd', 'talk')}대화`, right: '▶', desc: '적과 협상해 동료로 영입을 시도한다. (턴 소모)', value: 'talk' }] : []),
       { label: `${icon('cmd', 'item')}아이템`, right: '▶', desc: '소지품을 사용한다.', value: 'item' },
-      { label: `${icon('cmd', 'flee')}도주`, desc: '전투에서 벗어난다.', value: 'flee' },
-    ], { cancellable: false, startIndex: this.lastCmd[u.uid] ?? 0, ring: u,
+      { label: `${icon('cmd', 'flee')}도주`, desc: ev?.noFlee ? '이 전투에서는 도망칠 수 없다.' : '전투에서 벗어난다.', value: 'flee', disabled: !!ev?.noFlee },
+    ];
+    const top = await this.bui.menuSelect<string>(title, cmds, { cancellable: false, startIndex: Math.min(this.lastCmd[u.uid] ?? 0, cmds.length - 1), ring: u,
       onHover: (v) => this.previewOrder(u, v === 'attack' ? tempoOf(BASIC_ATTACK) : v === 'item' ? tempoOf(null) : 1) });
-    const idx = ['attack', 'skill', 'talk', 'item', 'flee'].indexOf(top!);
-    this.lastCmd[u.uid] = idx;
+    this.lastCmd[u.uid] = cmds.findIndex((c) => c.value === top);
     const pickEnemy = async (sk: SkillDef = BASIC_ATTACK) => {
       const t = await this.bui.selectTarget(enemies, { camera: this.camera, onHover: (x) => {
         if (x === 'all') return;
@@ -411,6 +460,12 @@ export class BattleMode {
       } });
       return t === 'all' ? null : t;
     };
+    if (top === 'combo') {
+      const c = await this.bui.menuSelect<Combo>('연계기', combos.map((x) => ({ label: x.name, right: `${x.cost}칸`, desc: x.desc, disabled: x.cost > this.gauge, value: x })));
+      if (!c) return null;
+      const t = await pickEnemy();
+      return t ? { kind: 'combo', combo: c, target: t } : null;
+    }
     if (top === 'attack') {
       const t = await pickEnemy();
       return t ? { kind: 'attack', target: t } : null;
@@ -455,6 +510,7 @@ export class BattleMode {
     }
     if (top === 'talk') {
       const t = await pickEnemy();
+      if (t?.hushed) { this.game.ui.toast(`${t.name}: …대답이 없다. (정숙 침이 꽂혀 있다)`, 'red'); return null; }
       return t ? { kind: 'talk', target: t } : null;
     }
     if (top === 'item') {
@@ -500,7 +556,8 @@ export class BattleMode {
     const vented = sk.vent ? u.heat : 0;
     await this.performSkill(u, sk.vent ? { ...sk, power: sk.power + (vented / 100) * 2.6 } : sk, targets, !sk.melee);
     if (sk.vent) { u.heat = 0; if (vented >= 50) this.game.ui.popup(u.topPos(), `방열 ${Math.round(vented)}%`, 'buff'); }
-    else await this.addHeat(u, sk.ap * 12);
+    else if (sk.heat !== undefined && sk.heat < 0) { if (u.hero?.id === 'kai') { u.heat = Math.max(0, u.heat + sk.heat); this.game.ui.popup(u.topPos(), `열압 ${sk.heat}`, 'buff'); } }
+    else await this.addHeat(u, sk.heat ?? sk.ap * 12);
     if (sk.fuse) u.sigils = [];
     else if (u.hero?.id === 'lyra' && sk.kind === 'magic' && SIGIL_ELEMENTS.includes(sk.element)) {
       const first = !u.sigils.length;
@@ -511,13 +568,64 @@ export class BattleMode {
     this.bui.refresh();
   }
 
+  // =====================================================================
+  // 증기압 게이지 · 연계기
+  // =====================================================================
+  private addGauge(v: number) {
+    if (!State.current.flag('ch1_gauge') || v <= 0) return;
+    const k = this.party.some((p) => p.effects.has('gaugeGain')) ? 1.15 : 1;
+    const before = Math.floor(this.gauge);
+    this.gauge = Math.min(3, this.gauge + v * k);
+    if (Math.floor(this.gauge) > before) Sfx.play('buff');
+    this.bui.setGauge(this.gauge);
+  }
+
+  /** Combos `u` can start now (both members standing, unlocked in the story). */
+  private availableCombos(u: BUnit): Combo[] {
+    const st = State.current;
+    if (!st.flag('ch1_gauge')) return [];
+    const up = (id: string) => this.party.some((p) => p.pid === id && !p.ko);
+    const out: Combo[] = [];
+    if (up('kai') && up('lyra') && (u.pid === 'kai' || u.pid === 'lyra')) {
+      out.push({ id: 'steam_circuit', name: '증기 회로참', cost: 2, partner: u.pid === 'kai' ? 'lyra' : 'kai',
+        desc: '리라가 칼날에 회로를 새기고 카이가 벤다. 5연격. 리라의 각인 하나를 써서 그 속성으로 바뀐다.' });
+    }
+    if (st.flag('combo_gear_gust') && up('kai') && up('cograt') && (u.pid === 'kai' || u.pid === 'cograt')) {
+      out.push({ id: 'gear_gust', name: '톱니 돌풍', cost: 1, partner: u.pid === 'kai' ? 'cograt' : 'kai',
+        desc: '티크가 발밑을 돌며 물고 카이가 올려벤다. 4연격 + 지연.' });
+    }
+    return out;
+  }
+
+  private async doCombo(u: BUnit, c: Combo, target: BUnit) {
+    this.gauge -= c.cost;
+    this.bui.setGauge(this.gauge);
+    this.actionTempo = 1;
+    const kai = this.party.find((p) => p.pid === 'kai')!;
+    const partner = this.party.find((p) => p.pid === (c.id === 'steam_circuit' ? 'lyra' : 'cograt'))!;
+    await this.tip('combo');
+    await this.bui.cutIn({ unit: partner, title: c.name, sub: `${partner.name} + ${kai.name}` }, 0.35);
+    await this.bui.cutIn({ unit: kai, title: c.name, sub: '연계' }, 0.4);
+    partner.anim.play(partner.hero ? 'cast' : 'attack', 1.2);
+    let sk: SkillDef;
+    if (c.id === 'steam_circuit') {
+      // the first stored sigil re-elements the blade
+      const el = partner.sigils.shift() ?? 'aether';
+      sk = { id: 'combo_steam_circuit', name: c.name, desc: '', ap: 0, target: 'enemy', kind: 'phys', element: el, power: 0.6, hits: 5, qte: 3, breakPower: 40 / 5, anim: 'slash', melee: true };
+    } else {
+      sk = { id: 'combo_gear_gust', name: c.name, desc: '', ap: 0, target: 'enemy', kind: 'phys', element: 'phys', power: 0.5, hits: 4, qte: 2, breakPower: 6, anim: 'slash', melee: true, delay: 20 };
+    }
+    await this.performSkill(kai, sk, [target], false);
+    this.bui.refresh();
+  }
+
   /** Kai's 열압: at 100 the boiler overheats (공격 ×1.35, scalds 5% HP a turn, 2 turns), then resets. */
   private async addHeat(u: BUnit, v: number) {
     if (u.hero?.id !== 'kai' || u.has('overheat')) return;
-    u.heat = Math.min(100, u.heat + v);
+    u.heat = Math.min(100, u.heat + v * (u.effects.has('heatGain') ? 1.2 : 1));
     if (u.heat < 100) return;
     u.heat = 0;
-    u.addStatus('overheat', u.effects.has('heatVent') ? 4 : 3);
+    u.addStatus('overheat', 3);
     Sfx.play('fire');
     this.fx.smoke.burst(u.centerPos(), 30, { color: 0xf4f1ea, speed: 4, up: 2, life: 1, size: 0.6, sizeEnd: 2.2, alpha: 0.6 });
     await this.bui.cutIn({ unit: u, title: '과열', sub: '공격 ×1.35 · 매 턴 HP 5% 소모' }, 0.45);
@@ -558,6 +666,7 @@ export class BattleMode {
         ring.result(grade === 'perfect' ? 'PERFECT' : grade === 'good' ? 'GOOD' : 'MISS', grade);
         Sfx.play(grade === 'perfect' ? 'qte_perfect' : grade === 'good' ? 'qte_good' : 'qte_miss');
         if (grade === 'perfect') Input.rumble(0, 0.6, 70);
+        this.addGauge(grade === 'perfect' ? 0.15 : grade === 'good' ? 0.05 : 0);
       }
       const mult = grade ? QTE_MULT[grade] : 1;
       // strike
@@ -580,6 +689,12 @@ export class BattleMode {
       for (const t of alive()) {
         if (isOffense) {
           this.hitUnit(u, t, { kind: kind as 'phys' | 'magic', element, power: sk.power, mult, brk: sk.breakPower * (grade === 'perfect' ? 1.5 : 1) });
+          // 분광 화살: the split light shows one weak spot
+          if (sk.id === 'spectrum_dart' && t.species) {
+            const b = State.current.bestiary[t.species.id];
+            const hidden = (Object.keys(t.species.affinity) as Element[]).filter((k) => !b.known.includes(k));
+            if (hidden.length) { b.known.push(hidden[0]); this.bui.refreshAffinity(); this.game.ui.popup(t.topPos(), `약점 발견 · ${ELEMENT_NAME[hidden[0]]}`, 'info'); }
+          }
           if (sk.delay && h === 0 && t.alive) {
             t.ct += (sk.delay / 100) * (100 / t.speed());
             this.game.ui.popup(t.topPos().add(new THREE.Vector3(0, 0.4, 0)), 'DELAY', 'info');
@@ -590,7 +705,7 @@ export class BattleMode {
             this.game.ui.popup(t.topPos(), sk.status.id === 'burn' ? '화상' : '상태 이상', 'info');
           }
         } else if (sk.kind === 'heal') {
-          const amt = Math.round((u.stats.mag * sk.power * 2.4 * mult + 10) * (u.effects.has('healUp') ? 1.25 : 1));
+          const amt = Math.round(u.stats.mag * sk.power * 2.4 * mult + 10);
           this.heal(t, amt);
         } else if (sk.kind === 'buff' && sk.status) {
           t.addStatus(sk.status.id, sk.status.turns + (grade === 'perfect' ? 1 : 0));
@@ -631,6 +746,7 @@ export class BattleMode {
     this.actionTempo = tempoOf(null);
     const def = ITEMS[id];
     if (!State.current.useItem(id)) return;
+    this.report.itemsUsed++;
     this.game.ui.moveName(`${icon('item', id, def.icon)} ${def.name}`);
     u.anim.play('item');
     await this.tl.wait(0.35);
@@ -662,7 +778,8 @@ export class BattleMode {
     e.anim.play('talk');
     await this.tip('talk');
     const allies = this.party.filter((p) => !p.ko && p !== u);
-    const res = await negotiate(this.bui, u, e, State.current.difficulty !== 'hard', { cornered, allies });
+    const holdupBonus = cornered && this.party.some((p) => p.effects.has('holdupTalk')) ? 0.15 : 0;
+    const res = await negotiate(this.bui, u, e, State.current.difficulty !== 'hard', { cornered, allies, bonus: holdupBonus, script: this.req.event?.scriptTalk });
     const st = State.current;
     switch (res.outcome) {
       case 'blocked':
@@ -717,7 +834,9 @@ export class BattleMode {
   private async maybeHoldUp(): Promise<'done' | 'fled' | null> {
     const foes = this.enemies.filter((e) => e.alive);
     // a first strike breaks everyone for free — the hold-up has to be earned by breaking someone here
-    if (this.holdUpSpent || !foes.length || !foes.every((e) => e.broken) || this.feats.breaks === 0) return null;
+    if (!State.current.flag('ch1_holdup') || this.holdUpSpent || !foes.length || !foes.every((e) => e.broken) || this.feats.breaks === 0) return null;
+    // a gated creature (the bell) only gives in once it's been worn down to half
+    if (foes.some((e) => e.species!.talkGate === 'brokenOrHalf' && e.hp > e.maxHp * 0.5)) return null;
     this.holdUpSpent = true;
     const party = this.party.filter((p) => !p.ko);
     // the party closes in around the enemies
@@ -725,7 +844,7 @@ export class BattleMode {
     await Promise.all(party.map((p, i) => this.moveUnit(p, new THREE.Vector3((i - (party.length - 1) / 2) * 2.6, 0, ENEMY_Z + 3.4), 0.3, this.enemyCenter())));
     await this.tip('holdup');
     const cut = await this.bui.holdUp(party);
-    const talkable = foes.filter((e) => !e.species!.talkGate || e.broken);
+    const talkable = foes.filter((e) => !e.hushed);
     const loot = foes.reduce((s, e) => s + e.species!.money, 0);
     const choice = await this.bui.menuAt<string>('Hold Up', [
       { label: '총공격', right: '전원', desc: '파티 전원이 덤벼들어 적 전체에 큰 피해. 마지막에 타이밍을 맞추면 위력 상승.', value: 'allout' },
@@ -734,11 +853,16 @@ export class BattleMode {
       { label: '그대로 계속', desc: '포위를 풀고 전투를 계속한다.', value: 'none' },
     ], 40, 0.55, { cancellable: false });
     await cut.close();
+    this.report.holdup = choice as BattleReport['holdup'];
     if (choice === 'allout') await this.allOutAttack(party, foes);
     else if (choice === 'talk') {
       const target = talkable.length === 1 ? talkable[0] : await this.bui.selectTarget(talkable, { camera: this.camera, onHover: (x) => x !== 'all' && this.camTarget(party[0], x) });
       if (target && target !== 'all') {
         const talker = party.find((p) => p.hero?.id === 'kai') ?? party[0];
+        for (const [who, text] of this.req.event?.lines?.cornered ?? []) {
+          await this.bui.say(who, text, '', who === target.name ? target.pid : who === '카이' ? 'kai' : '');
+        }
+        this.bui.closeDialog();
         await this.doTalk(talker, target, true);
       }
     } else if (choice === 'extort') {
@@ -820,7 +944,12 @@ export class BattleMode {
   // Enemy turn
   // =====================================================================
   private chooseMove(e: BUnit): EnemyMove {
+    const phase = e.hp > e.maxHp * 0.6 ? 1 : 2;
+    const once = e.species!.moves.find((m) => m.onceBelow && e.hp < e.maxHp * m.onceBelow && !e.usedOnce.has(m.id));
+    if (once) { e.usedOnce.add(once.id); return once; }
     const moves = e.species!.moves.filter((m) => {
+      if (m.phase && m.phase !== phase) return false;
+      if (m.onceBelow) return false;
       if (m.kind !== 'self') return true;
       if (m.heal) return e.hp < e.maxHp * 0.5;
       if (m.status) return !e.has(m.status.id);
@@ -843,6 +972,12 @@ export class BattleMode {
   }
 
   private async enemyTurn(e: BUnit) {
+    const lines = this.req.event?.lines;
+    if (lines?.p2 && !this.phase2Said && e.hp <= e.maxHp * 0.6) {
+      this.phase2Said = true;
+      await this.bui.say(e.name, lines.p2, e.color, e.pid);
+      this.bui.closeDialog();
+    }
     const mv = this.chooseMove(e);
     if (mv.kind !== 'self') await this.tip('parry');
     if (mv.jump) await this.tip('jump');
@@ -944,6 +1079,7 @@ export class BattleMode {
 
     // perfect defense (every hit parried, or every shockwave jumped) → counter attack
     if (results.length && (results.every((r) => r === 'parry') || results.every((r) => r === 'jump')) && e.alive) {
+      if (results.length >= 4 && this.req.event?.lines?.parried) { await this.bui.say(e.name, this.req.event.lines.parried, e.color, e.pid); this.bui.closeDialog(); }
       const counterer = targets.find((t) => !t.ko);
       if (counterer) await this.counter(counterer, e);
     }
@@ -956,6 +1092,7 @@ export class BattleMode {
     if (res === 'parry') {
       e.rapport++;
       this.feats.parries++;
+      this.report.parries++;
       Sfx.play('parry');
       Input.rumble(0.35, 0.8, 90);
       this.shake = 0.18;
@@ -971,7 +1108,8 @@ export class BattleMode {
       if (!e.broken) this.addBreak(e, 5);
       // Kai vents boiler pressure into the parry
       for (const t of live) if (t.hero?.id === 'kai') t.heat = Math.max(0, t.heat - (t.effects.has('heatVent') ? 20 : 10));
-      for (const t of live) if (t.effects.has('parryAp')) t.ap = Math.min(9, t.ap + 1);
+      for (const t of live) if (t.effects.has('parryAp') && t.parryApTurn !== this.turnNo) { t.parryApTurn = this.turnNo; t.ap = Math.min(9, t.ap + 1); }
+      this.addGauge(0.2);
     } else if (res === 'jump') {
       Sfx.play('dodge');
       for (const t of live) void this.hop(t);
@@ -1010,7 +1148,8 @@ export class BattleMode {
       await this.tl.wait(0.2);
       this.fx.slash(u.pos.clone().add(new THREE.Vector3(0, 1.1, 0)), u.obj.rotation.y, 0xffe9a0, 2.4, 1.2, 0.25);
     }
-    this.hitUnit(u, e, { kind: ranged ? 'magic' : 'phys', element: u.hero?.basicElement ?? 'phys', power: 1.5, mult: u.effects.has('counterUp') ? 1.5 : 1, brk: 25 });
+    this.hitUnit(u, e, { kind: ranged ? 'magic' : 'phys', element: u.hero?.basicElement ?? 'phys', power: 1.5, mult: 1, brk: 25 });
+    this.addGauge(0.2);
     await this.tl.wait(0.4);
     if (!ranged) await this.returnHome(u);
   }
@@ -1028,6 +1167,7 @@ export class BattleMode {
     if (def.broken) dmg *= 1.5;
     const crit = att.bonus === 'crit';
     if (crit) dmg *= 1.5;
+    if (def.side === 'party' && def.effects.has('firstHitGuard') && !def.guardUsed) { def.guardUsed = true; dmg *= 0.7; }
     dmg = Math.max(1, Math.round(dmg));
     def.hp = Math.max(0, def.hp - dmg);
     if (def.side === 'party') this.feats.dmgTaken += dmg;
@@ -1035,6 +1175,7 @@ export class BattleMode {
       this.feats.weak++;
       // press-turn flavour: exploiting a weakness brings the attacker's next turn sooner (once per action)
       if (att.side === 'party' && !this.pulled) { this.pulled = true; this.actionTempo -= 0.15; }
+      if (att.side === 'party') this.addGauge(0.1);
     }
     def.flashT = 0.15;
     const p = def.centerPos();
@@ -1050,7 +1191,7 @@ export class BattleMode {
     if (def.side === 'party') Input.rumble(0.7, 0.4, 160);
     if (def.hp <= 0) { this.ko(def); return; }
     def.anim.play('hit');
-    if (def.side === 'enemy' && o.brk > 0) this.addBreak(def, o.brk * (aff > 1 ? 1.3 : 1) * (att.bonus === 'brk' ? 2 : 1) * (att.effects.has('brkUp') ? 1.25 : 1));
+    if (def.side === 'enemy' && o.brk > 0) this.addBreak(def, o.brk * (aff > 1 ? 1.3 : 1) * (att.bonus === 'brk' ? 2 : 1) * (att.effects.has('brkUp') ? 1.1 : 1));
   }
 
   private elementFx(el: Element, t: BUnit) {
@@ -1078,6 +1219,9 @@ export class BattleMode {
     if (e.brk >= e.brkMax) {
       e.broken = true;
       this.feats.breaks++;
+      this.addGauge(0.5);
+      // sq03 duel: broken after 3+ parries without items → the challenger yields
+      if (this.req.event?.duel && this.feats.parries >= 3 && this.report.itemsUsed === 0) this.report.duelWon = true;
       Sfx.play('break');
       Input.rumble(0.9, 0.5, 220);
       void this.bui.cutIn({ title: 'Break', sub: e.name });
@@ -1196,6 +1340,7 @@ export class BattleMode {
       for (const p of this.party) if (!p.ko) { p.anim.stance = 'idle'; p.anim.play('victory'); this.faceHome(p); p.pos.copy(p.home); p.obj.rotation.y = 0; }
       this.setCam(new THREE.Vector3(2.5, 2.4, PARTY_Z - 6), new THREE.Vector3(0, 1.2, PARTY_Z), 2.5);
       await this.tl.wait(1.0);
+      for (const p of this.party) if (!p.ko && p.effects.has('winHeal')) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.05);
       // rewards (× tactical bonus)
       const defeated = this.enemies.filter((e) => e.ko && !e.removed);
       const bonuses = this.tacticalBonuses();
@@ -1236,6 +1381,7 @@ export class BattleMode {
       ]);
       if (choice === 'retry') result = 'retry';
     }
+    this.report.recruited = [...this.recruited];
     this.end();
     return result;
   }

@@ -1,6 +1,6 @@
 # 2D 에셋 제작 가이드 & 프롬프트
 
-외부 이미지 모델로 만들 2D 에셋 43개의 **용도 · 생김새 · 파일명 · 프롬프트**를 정리했습니다.
+외부 이미지 모델로 만들 2D 에셋 53개의 **용도 · 생김새 · 파일명 · 프롬프트**를 정리했습니다.
 파일을 `public/art/` 아래 정해진 이름으로 넣기만 하면 게임에 바로 반영됩니다(개발 서버가 자동 새로고침).
 없는 파일은 지금처럼 이니셜 원형이나 이모지로 표시되므로, **우선순위 1부터 조금씩** 넣어도 됩니다.
 
@@ -26,6 +26,8 @@
 | ★3 | `ui/ink_texture.png` | 1 | 먹색 패널 전체의 잉크 결 (타일 반복) — §7 | 256px 타일 |
 | ★2 | `ui/feather.png` | 1 | 영입 성공 때 떨어지는 여신의 깃털 — §7 | 34×100px (여러 장이 회전하며 낙하) |
 | ★3 | `portraits/cutin_<몬스터>.png` | 6 | 영입한 몬스터가 스킬을 쓸 때 컷인 — §7 | 컷인과 같음 |
+| ★1 | `portraits/{prism_moth, bellows_toad, strongbox_tortoise, grand_carillon}.png` | 4 | 챕터 1 신규 몬스터 — §9 | 원형 34~46px, 대화창 84px |
+| ★1 | `portraits/{marta, pippe, bail, poppy, verdi, shopkeeper}.png` | 6 | 챕터 1 NPC — 필드 대화 초상(300×360 사선 창) — §9 | 필드 대화 300×360px |
 
 > 확장자는 `.png` 권장 (`.webp`도 인식). 파일명은 표의 이름 그대로 저장하세요 (대소문자 무관).
 
@@ -418,4 +420,61 @@ public/art/icons/el_phys.png  el_fire.png  el_frost.png  el_volt.png  el_aether.
 public/art/icons/st_atkUp.png  st_defUp.png  st_haste.png  st_guard.png  st_burn.png  st_atkDown.png  st_enraged.png
 public/art/portraits/cutin_kai.png  cutin_lyra.png   (cutin_<몬스터>.png 선택)
 public/art/ui/gear_ring.png  ink_band.png  ink_splat.png  target_blade.png  ink_texture.png  feather.png
+```
+
+---
+
+## 9. 챕터 1 신규 캐릭터 (★1) — `portraits/<id>.png`
+
+설정은 [story/WORLD.md](story/WORLD.md), [story/CHAPTER1.md](story/CHAPTER1.md). 공통 구도·스타일은 §3과 같습니다(3/4 바스트샷, 원형 크롭 안전 여백, 투명 배경).
+**필드 대화창**에서는 같은 그림이 300×360 사선 창에 세로로 크게 들어갑니다(아래가 잘리지 않게 가슴께까지 그리기). 파일이 없으면 이니셜 사선 창이 대신 나옵니다.
+
+### 9-1. 프리즘 나방 — `prism_moth.png` (약한 적 · 호기심 · UI색 `#7fd6e8`)
+```
+Creature portrait for a fantasy steampunk JRPG. A "Prism Moth": a moth whose four broad flat wings are stained glass — cyan (#5fd0e0), violet (#9a7bd8) and amber (#e8a84a) panes in dark lead frames — casting coloured light, a segmented polished brass body, a small glowing violet aether crystal on its belly, two thin clock hands as antennae. Curious personality: head tilted, big shiny compound eyes full of wonder. Bust framing of head, body and the upper wings, three-quarter view turned slightly to the right, head centered with comfortable margin so it survives a circular crop. Anime-inspired JRPG illustration, clean cel shading with soft painterly lighting, warm key light from the upper left, coloured light flecks from the glass. Transparent background (if unavailable: flat solid #7fd6e8 background). Single creature, no text, no frame.
+```
+
+### 9-2. 풀무 두꺼비 — `bellows_toad.png` (약한 적 · 탐욕 · UI색 `#a8643a`)
+```
+Creature portrait for a fantasy steampunk JRPG. A "Bellows Toad": a squat round toad whose body is an accordion-pleated leather bellows (#7a4a2c) in a brass frame, a soot-blackened copper chimney nozzle for a mouth with embers glowing inside, two pressure-gauge eyes (glass dials with trembling needles), stubby brass legs. Greedy personality: half-lidded hungry look, nozzle puffing a little smoke, drooling a spark. Bust framing, three-quarter view turned slightly to the right, centered with comfortable margin for a circular crop. Anime-inspired JRPG illustration, clean cel shading with soft painterly lighting, warm key light from the upper left. Transparent background (if unavailable: flat solid #a8643a background). Single creature, no text, no frame.
+```
+
+### 9-3. 금고 거북 — `strongbox_tortoise.png` (미니보스 · 겁쟁이 · UI색 `#3b3f46`)
+```
+Creature portrait for a fantasy steampunk JRPG. A "Strongbox Tortoise": a tortoise whose shell is an old bank vault — black steel (#2b2e34) with ornate gold trim (#d4a83a) and a big brass combination dial on the front, a thread of steam leaking from the door seam; riveted cast-iron head and legs, small amber indicator-lamp eyes (#ffb347). Timid personality: head half pulled into the shell, worried eyes, clutching its dial. Bust framing, three-quarter view turned slightly to the right, centered with comfortable margin for a circular crop. Anime-inspired JRPG illustration, clean cel shading with soft painterly lighting. Transparent background (if unavailable: flat solid #3b3f46 background). Single creature, no text, no frame.
+```
+
+### 9-4. 그란 카리용 — `grand_carillon.png` (챕터 보스 · 고독 · UI색 `#b08d3c`)
+```
+Creature portrait for a fantasy steampunk JRPG. "Grand Carillon", the heart of an old clock tower: a towering antique brass bell (#b08d3c) with verdigris streaks and cast relief lettering, a crown of gears on top pierced by a black iron needle dripping black oil, inside the dark bell mouth a glass clock face whose hour and minute hands form sad eyebrows, black iron striking hammers as arms. Lonely personality: weary, sorrowful, dignified. Bust framing of the bell's upper half and face, three-quarter view turned slightly to the right, centered with comfortable margin for a circular crop. Anime-inspired JRPG illustration, clean cel shading with soft painterly lighting, dusty golden light shafts. Transparent background (if unavailable: flat solid #b08d3c background). Single creature, no text, no frame.
+```
+
+### 9-5. 마르타 — `marta.png` (집배대 지부장 · 63세)
+```
+Character portrait for a fantasy steampunk JRPG. Marta, a 63-year-old courier-union branch chief: sturdy build, short grey hair under a dark green peaked courier cap with a small brass union badge, stern brows and a hint of a smile at one corner of the mouth, a radio headset with a little antenna, a dark green double-breasted coat with brass buttons, a satchel strap across the chest, a worn brass-and-iron prosthetic right forearm ending in a gas-lamp hook. Gruff but warm. Head-and-shoulders bust, three-quarter view turned slightly to the right, face centered with comfortable margin. Anime-inspired JRPG illustration, clean cel shading with soft painterly lighting, warm amber key light. Transparent background (if unavailable: flat solid #2f4a3a background). Single character, no text, no frame.
+```
+
+### 9-6. 피페 — `pippe.png` (오르간 기령 · 공방 주인)
+```
+Character portrait for a fantasy steampunk JRPG. Pippe, a grandmotherly pipe-organ spirit: a walnut-wood (#5a3a24) organ body with twelve aged-brass pipes fanning up behind like a lace collar or a hairdo, ivory keys under a cover that works like a smiling mouth, two round sound-hole eyes glowing soft amber (#ffb347), wisps of steam from the pipe tips. Kind, amused, motherly. Bust framing, three-quarter view turned slightly to the right, centered with comfortable margin. Anime-inspired JRPG illustration, clean cel shading with soft painterly lighting. Transparent background (if unavailable: flat solid #5a3a24 background). Single character, no text, no frame.
+```
+
+### 9-7. 바일 — `bail.png` (리라의 오빠 · 조율원 정숙반)
+```
+Character portrait for a fantasy steampunk JRPG. Bail Belmore, mid-20s, Lyra's older brother and an enforcer of the tuning council: short neat silver-white hair, narrow ice-blue eyes, a high-collared silver-grey long officer coat with steel buttons, a bandolier of thin black needles, his left forearm encased in a black iron needle-launcher gauntlet raised slightly. Cold, calm, quietly sad. Head-and-shoulders bust, three-quarter view turned slightly to the right, face centered with comfortable margin. Anime-inspired JRPG illustration, clean cel shading with soft painterly lighting, cool grey key light with a faint cyan rim. Transparent background (if unavailable: flat solid #9aa0a8 background). Single character, no text, no frame.
+```
+
+### 9-8. 포피 — `poppy.png` (쉼표 역 아이 · 8세)
+```
+Character portrait for a fantasy steampunk JRPG. Poppy, a cheerful 8-year-old village girl: ginger bob with two short pigtails, freckles, a huge grin, big brass goggles pushed up on her forehead, blue overalls over a mustard shirt, a red scarf. Bright and curious. Head-and-shoulders bust, three-quarter view turned slightly to the right, face centered with comfortable margin. Anime-inspired JRPG illustration, clean cel shading with soft painterly lighting, warm afternoon light. Transparent background (if unavailable: flat solid #c8283a background). Single character, no text, no frame.
+```
+
+### 9-9. 베르디 — `verdi.png` (녹청 연대 사자)
+```
+Creature portrait for a fantasy steampunk JRPG. Verdi, a messenger spirit of the Verdigris League: a lantern-flame spirit like a gas-lamp wisp, but its old brass lantern is covered in green verdigris (#5e7a5a) and its flame burns a pale green; a tiny telegraph key hangs from its handle. Terse and solemn. Bust framing, three-quarter view turned slightly to the right, centered with comfortable margin. Anime-inspired JRPG illustration, clean cel shading with soft painterly lighting, green flame glow. Transparent background (if unavailable: flat solid #5e7a5a background). Single creature, no text, no frame.
+```
+
+### 9-10. 상점 주인 — `shopkeeper.png` (「톱니와 저울」)
+```
+Character portrait for a fantasy steampunk JRPG. The shopkeeper of "Gears and Scales": a portly middle-aged merchant, balding with a handlebar moustache, a monocle on a chain, a brown waistcoat with a red bow tie, rolled shirt sleeves, a canvas apron stitched with a brass scale emblem. Jovial, shrewd. Head-and-shoulders bust, three-quarter view turned slightly to the right, face centered with comfortable margin. Anime-inspired JRPG illustration, clean cel shading with soft painterly lighting. Transparent background (if unavailable: flat solid #6a4a30 background). Single character, no text, no frame.
 ```

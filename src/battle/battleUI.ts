@@ -6,7 +6,7 @@ import { ELEMENT_NAME, STATUS_INFO, type Element } from '../data/types';
 import { State } from '../game/state';
 import type { UI } from '../ui/ui';
 import { artSrc, icon, portraitInner, type Expression } from '../ui/art';
-import { FEATHER_SVG, gearSvg } from '../ui/ornaments';
+import { gearSvg } from '../ui/ornaments';
 import { bindInput, pb } from '../ui/glyph';
 import type { Timeline } from '../core/timeline';
 import type { BUnit } from './bunit';
@@ -101,6 +101,7 @@ export class BattleUI {
   private bladeSpot: { x: number; y: number } | null = null;
   private defHint: HTMLElement;
   private speedEl: HTMLElement;
+  private gaugeEl: HTMLElement;
   private speed = 1;
   private arrow: HTMLElement;
   private dialog: HTMLElement;
@@ -141,6 +142,7 @@ export class BattleUI {
     this.defHint = bindInput(el('div', 'def-hint', '', this.root), (s) => s.device === 'pad'
       ? `<span class="dh-n">${pb('a')}/${pb('rb')} 패링</span><span class="dh-n">${pb('b')} 회피</span><span class="dh-j">${pb('y')} 점프!</span>`
       : '<span class="dh-n"><kbd>F</kbd>/<kbd>좌클릭</kbd> 패링</span><span class="dh-n"><kbd>Space</kbd>/<kbd>우클릭</kbd> 회피</span><span class="dh-j"><kbd>W</kbd> 점프!</span>');
+    this.gaugeEl = el('div', 'steam-gauge', '<span class="sg-l">증기압</span><span class="sg-cells"><i></i><i></i><i></i></span>', this.root);
     this.speedEl = bindInput(el('div', 'battle-speed', '', this.root), (s) => `<b>${this.speed > 1 ? '▶▶' : '▶'} ×${this.speed}</b><span>${s.device === 'pad' ? pb('back') : '<kbd>Tab</kbd>'} 배속</span>`);
     this.arrow = el('div', 'target-arrow', img(artSrc('ui/target_blade'), BLADE_SVG), ui.layer);
     // textures used from CSS (ink blots behind moment words, ink grain on panels)
@@ -561,6 +563,16 @@ export class BattleUI {
     };
   }
 
+  /** 증기압 게이지: three brass cells above the party portraits (hidden until the story unlocks it). */
+  setGauge(v: number, visible = State.current.flag('ch1_gauge') > 0) {
+    this.gaugeEl.style.display = visible ? '' : 'none';
+    this.gaugeEl.querySelectorAll('i').forEach((c, i) => {
+      const f = Math.max(0, Math.min(1, v - i));
+      (c as HTMLElement).style.setProperty('--f', String(f));
+      c.classList.toggle('full', f >= 1);
+    });
+  }
+
   /** Top-right speed plate; hidden at ×1 except for a key hint. */
   setSpeed(k: number) {
     this.speed = k;
@@ -721,16 +733,7 @@ export class BattleUI {
 
   /** The goddess's feathers drift down — reserved for big moments of grace (UI bible §1). */
   private feathers() {
-    const layer = el('div', 'feathers', undefined, this.root);
-    const art = artSrc('ui/feather');
-    for (let i = 0; i < 14; i++) {
-      const f = el('div', 'feather', img(art, FEATHER_SVG), layer);
-      f.style.left = `${8 + Math.random() * 84}%`;
-      f.style.setProperty('--d', `${(Math.random() * 0.9).toFixed(2)}s`);
-      f.style.setProperty('--s', (0.6 + Math.random() * 0.7).toFixed(2));
-      f.style.setProperty('--sw', `${((Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * 50)).toFixed(0)}px`);
-    }
-    this.tl.wait(3.4).then(() => layer.remove());
+    this.ui.feathers(14);
   }
 
   // -------------------------------------------------------------------------

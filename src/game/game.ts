@@ -5,7 +5,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { Input } from '../core/input';
 import { Sfx } from '../core/audio';
-import { getModel, loadModels, missingModels, MODEL_NAMES } from '../core/assets';
+import { getModel, getProp, loadModels, missingModels, MODEL_NAMES, propNames } from '../core/assets';
 import { patchObject, uploadFakeLights } from '../fx/fakeLights';
 import { Graphics, QUALITY } from './graphics';
 import { UI } from '../ui/ui';
@@ -13,7 +13,8 @@ import { Menus } from '../ui/menus';
 import { padName } from '../ui/glyph';
 import { battleCut } from '../ui/battleCut';
 import { FieldMode } from '../field/field';
-import { BattleMode, type BattleRequest } from '../battle/battle';
+import { BattleMode, type BattleReport, type BattleRequest, type BattleResult } from '../battle/battle';
+import { Story } from '../story/story';
 import { GameState, State } from './state';
 import { Save, SLOT_NAME, type SlotId } from './save';
 import type { Difficulty } from '../data/types';
@@ -29,6 +30,7 @@ export class Game {
   menus!: Menus;
   field!: FieldMode;
   battle!: BattleMode;
+  story!: Story;
   mode: Mode = 'loading';
   paused = false;
   private clock = new THREE.Clock();
@@ -89,6 +91,7 @@ export class Game {
     await loadModels((d, t) => (fill.style.width = `${(d / t) * 100}%`));
     const missing = missingModels();
     await new Promise((r) => setTimeout(r, 50));
+    this.story = new Story(this);
     this.field = new FieldMode(this);
     this.battle = new BattleMode(this);
     this.menus = new Menus(this);
@@ -117,15 +120,21 @@ export class Game {
     const b = this.battle;
     const tmp: [THREE.Scene, THREE.Object3D][] = [];
     // every unit model in the battle scene (its lights differ from the field's → separate programs)
-    MODEL_NAMES.filter((n) => n !== 'props' && n !== 'arena').forEach((n, i) => {
+    MODEL_NAMES.filter((n) => n !== 'props' && n !== 'props2' && n !== 'arena').forEach((n, i) => {
       const m = getModel(n);
-      m.position.set((i - 4) * 2.2, 0, 0); // inside the battle key light's shadow frustum
+      m.position.set(((i % 8) - 4) * 2.2, 0, Math.floor(i / 8) * 3 - 3); // inside the battle key light's shadow frustum
       b.scene.add(m);
       tmp.push([b.scene, m]);
     });
     const proj = this.field.warmObject();
     this.field.scene.add(proj);
     tmp.push([this.field.scene, proj]);
+    // chapter 1 props and NPCs only appear in other zones — compile them in the field scene too
+    [...propNames('props2').map((n) => getProp(n)), ...(['npc_marta', 'npc_bail', 'npc_poppy', 'npc_shopkeeper', 'grand_carillon', 'cograt', 'knight', 'wisp'] as const).map((n) => getModel(n))].forEach((o, i) => {
+      o.position.set(((i % 6) - 3) * 3, 0, -20 - Math.floor(i / 6) * 4);
+      this.field.scene.add(o);
+      tmp.push([this.field.scene, o]);
+    });
     // one of every one-shot effect, in both scenes
     const teles = [b, this.field].map(({ fx, scene }) => {
       const p = new THREE.Vector3(0, 1, 0);
@@ -238,6 +247,8 @@ export class Game {
     this.mode = next;
     switch (next) {
       case 'title':
+        // the title backdrop orbits the plains' clock tower
+        if (this.field.zone.id !== 'plains') this.field.loadZone('plains');
         this.titleT = 0;
         this.ui.camera = this.field.camera;
         this.menus.showTitle();
@@ -255,12 +266,11 @@ export class Game {
   newGame(diff: Difficulty) {
     State.current = new GameState();
     State.current.difficulty = diff;
-    this.field.resetEnemies();
-    this.field.respawnPlayer();
     this.ui.fadeOut(300).then(() => {
+      this.field.syncFromState(); // fresh state: plains, story flags all unset
+      this.field.respawnPlayer(true);
       this.setMode('field');
-      this.ui.fadeIn(600);
-      this.ui.banner('에테르 평원', '멈춘 시계탑을 향해', 'zone', 2200);
+      void this.field.cutscene(() => this.story.onNewGame());
     });
   }
 
@@ -310,8 +320,9 @@ export class Game {
     else if (Input.pressed('F9')) void this.loadSlot('quick');
   }
 
-  async startBattle(req: BattleRequest) {
-    if (this.mode !== 'field') return;
+  /** Field → battle → field. Story battles await the result; field-spawn battles report to the story. */
+  async startBattle(req: BattleRequest): Promise<{ result: BattleResult; report: BattleReport }> {
+    if (this.mode !== 'field') return { result: 'fled', report: this.battle.report };
     // freeze the frame the contact happened on (the field stops updating while in 'transition')
     const shot = this.snapshot(this.field.scene, this.field.camera, this.field.fx.lights);
     const focus = req.source ? this.ui.project(req.source.pos.clone().lerp(req.source.topPos(), 0.5)) : null;
@@ -337,7 +348,11 @@ export class Game {
     }
     this.setMode('field');
     this.ui.fadeIn(400);
+    const report = this.battle.report;
+    if (req.source && result !== 'defeat') await this.field.cutscene(() => this.story.afterSpawnBattle(req.source!.spawn.id, result, report));
+    else if (req.source) this.story.refresh();
     if (result === 'victory') this.autosave();
+    return { result, report };
   }
 
   openPause() {

@@ -24,6 +24,11 @@ RIGGED = {
              "any_of": [["hair_L_1", "hair_R_1", "hair_B_1"]]},
     "knight": {"bones": HUMANOID_BONES + ["tabard_F_1", "tabard_F_2"],
                "rigid": {"weapon": "forearm_R", "shield": "forearm_L", "key": "torso"}},
+    # chapter 1 NPCs (model_npc.py) share the hero skeleton
+    "npc_marta": {"bones": HUMANOID_BONES + ["coat_FL_1", "coat_FR_1", "coat_L_1", "coat_R_1"], "rigid": {"weapon": "forearm_R"}},
+    "npc_bail": {"bones": HUMANOID_BONES + ["coat_FL_1", "coat_FR_1", "coat_L_1", "coat_R_1"], "rigid": {"weapon": "forearm_R"}},
+    "npc_poppy": {"bones": HUMANOID_BONES + ["scarf_1", "scarf_2"], "rigid": {"weapon": "forearm_R"}},
+    "npc_shopkeeper": {"bones": HUMANOID_BONES + ["tabard_F_1", "tabard_F_2"], "rigid": {"weapon": "forearm_R"}},
     "golem": {"bones": HUMANOID_BONES,
               "rigid": {"steam_point": None}},
     "cograt": {"bones": ["body", "head", "ear_L", "ear_R", "tail_1", "tail_2", "tail_3", "tail_4",
@@ -56,7 +61,7 @@ PARENTS = {
 }
 # heroes (low-poly) get a little extra for the round elbow/knee joint caps;
 # enemies use the hi-poly "medium" tier budgets (see ASSET_SPEC.md "Build quality")
-BUDGET = {"kai": 3100, "lyra": 3100, "cograt": 10000, "slime": 8000, "wisp": 10000, "beetle": 20000,
+BUDGET = {"kai": 3100, "lyra": 3100, "npc_marta": 3100, "npc_bail": 3100, "npc_poppy": 3100, "npc_shopkeeper": 3100, "cograt": 10000, "slime": 8000, "wisp": 10000, "beetle": 20000,
           "knight": 25000, "golem": 30000}
 ALL = ["kai", "lyra", "knight", "cograt", "slime", "beetle", "wisp", "golem"]
 # animated nodes whose rest rotation must be identity (unrigged models only)

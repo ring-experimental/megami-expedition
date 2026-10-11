@@ -22,11 +22,16 @@ export interface TalkOptions {
   cornered?: boolean;
   /** Other party members still standing — a recruited monster of the same species / temperament chimes in. */
   allies?: BUnit[];
+  /** extra chance (부품: 작은 종추) */
+  bonus?: number;
+  /** scripted tutorial talk: fixed question, a demand the player can meet, a sure success */
+  script?: 'tick';
 }
 
 export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showHints: boolean, opts: TalkOptions = {}): Promise<{ outcome: TalkOutcome; chance?: number }> {
   const sp = enemy.species!;
-  const per = PERSONALITIES[sp.personality];
+  // species lines override the temperament's (chapter 1 creatures have their own voice)
+  const per = { ...PERSONALITIES[sp.personality], ...sp.talk };
   const st = State.current;
   const name = sp.name;
   const col = sp.color;
@@ -56,10 +61,11 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
     await ui.say(name, pick(per.like), col, sp.id, 'happy');
   }
 
-  // two questions
+  // two questions (the tutorial asks the one about fear, where kindness is the answer)
   const pool = shuffle(QUESTIONS.map((_, i) => i).filter((i) => !enemy.asked.has(i)));
   if (pool.length < 2) enemy.asked.clear();
-  const qs = (pool.length >= 2 ? pool : shuffle(QUESTIONS.map((_, i) => i))).slice(0, 2);
+  const tutQ = QUESTIONS.findIndex((q) => q.text.startsWith('싸우는 거'));
+  const qs = opts.script === 'tick' ? [tutQ] : (pool.length >= 2 ? pool : shuffle(QUESTIONS.map((_, i) => i))).slice(0, 2);
   for (const qi of qs) {
     enemy.asked.add(qi);
     const q = QUESTIONS[qi];
@@ -83,8 +89,9 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
 
   // demand
   let gave = false;
-  if (Math.random() < per.demandRate) {
-    const d = pick(DEMANDS[sp.personality]);
+  if (opts.script === 'tick' || Math.random() < per.demandRate) {
+    const d = opts.script === 'tick' ? DEMANDS.timid[0] : pick(DEMANDS[sp.personality]);
+    if (opts.script === 'tick' && !(st.inventory.tonic > 0)) st.addItem('tonic');
     let detail = '';
     let can = true;
     if (d.kind === 'item') { detail = `${icon('item', d.item!, ITEMS[d.item!].icon)} ${ITEMS[d.item!].name} (보유 ${st.inventory[d.item!] ?? 0})`; can = (st.inventory[d.item!] ?? 0) > 0; }
@@ -125,6 +132,7 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
     ['레벨 차이', lvDiff],
     ['같은 종족 동료 보유', already],
     ['포위 협상', opts.cornered ? 0.25 : 0],
+    ['부품 효과', opts.bonus ?? 0],
   ];
   let chance = parts.reduce((s, [, v]) => s + v, 0);
   if (sp.personality === 'honorable' && enemy.rapport === 0) {
@@ -132,6 +140,7 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
     chance *= 0.5;
   }
   chance = clamp(chance, 0.05, 0.95);
+  if (opts.script === 'tick') chance = 1;
   const success = Math.random() < chance;
   await ui.chanceRoll(parts, chance, success);
   if (success) {

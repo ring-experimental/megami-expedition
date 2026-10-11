@@ -1,7 +1,7 @@
 import { HEROES, SPECIES, allyStats, heroStats, xpToNext } from '../data/units';
 import type { Difficulty, Element, Stats } from '../data/types';
 import { SKILLS } from '../data/skills';
-import { BOARDS, PARTS, artsFor, type PartEffect } from '../data/parts';
+import { BOARDS, PARTS, artsFor, type CrystalCost, type PartEffect } from '../data/parts';
 import { MAX_INHERITED } from '../data/fusion';
 
 /** A persistent party member (hero or recruited monster). */
@@ -16,6 +16,8 @@ export interface Member {
   color: string;
   /** Monsters: skills inherited at the 공방 (max 2). */
   inherited?: string[];
+  /** Story-named individual (티크…): never a fusion material. */
+  locked?: boolean;
 }
 
 export interface LevelUpInfo { id: string; name: string; from: number; to: number; newSkills: string[] }
@@ -43,22 +45,43 @@ export class GameState {
   /** Where the party stands: zone id + position (written right before saving, read on load). */
   zone = 'plains';
   pos: { x: number; z: number; yaw: number } | null = null;
+  /** Last rest point used — where the party wakes after a defeat. */
+  lastRest: { zone: string; x: number; z: number } | null = null;
   /** 부품 owned (count) and each hero's board: slot → part id; which slots are open. */
-  parts: Record<string, number> = { piston_ring: 1, ember_valve: 1, aether_lens: 1 };
-  boards: Record<string, (string | null)[]> = { kai: [null, null, null, null, null, null], lyra: [null, null, null, null, null, null] };
+  parts: Record<string, number> = {};
+  boards: Record<string, (string | null)[]> = { kai: [null, null, null, null, null], lyra: [null, null, null, null, null, null] };
   boardOpen: Record<string, number[]> = { kai: [...BOARDS.kai.open], lyra: [...BOARDS.lyra.open] };
+  /** 친밀도 per party member (0–3; 3 = MAX). Recruits join at 1 — they came willingly. */
+  bond: Record<string, number> = { lyra: 1 };
   /** 속성 결정 by element. */
   crystals: Record<Element, number> = { phys: 0, fire: 0, frost: 0, volt: 0, aether: 0 };
   /** Story / quest progress: free-form counters and switches keyed by id. */
   flags: Record<string, number> = {};
 
   constructor() {
-    for (const h of Object.values(HEROES)) {
-      const m: Member = { id: h.id, kind: 'hero', name: h.name, level: 4, xp: 0, hp: 0, model: h.model, color: h.color };
-      m.hp = this.stats(m).hp;
-      this.roster.push(m);
-    }
+    // Lyra joins in the story (chapter 1, m02)
+    this.addHero('kai');
+    this.active = ['kai'];
     for (const id of Object.keys(SPECIES)) this.bestiary[id] = { seen: false, recruited: false, absorbed: 0, known: [] };
+  }
+
+  addHero(id: 'kai' | 'lyra') {
+    if (this.roster.some((m) => m.id === id)) return;
+    const h = HEROES[id];
+    const m: Member = { id: h.id, kind: 'hero', name: h.name, level: 4, xp: 0, hp: 0, model: h.model, color: h.color };
+    m.hp = this.stats(m).hp;
+    this.roster.push(m);
+    if (!this.active.includes(id) && this.active.length < 3) this.active.push(id);
+  }
+
+  has(id: string) {
+    return this.roster.some((m) => m.id === id);
+  }
+
+  addBond(id: string, d: number) {
+    if (!this.has(id) || id === 'kai') return 0;
+    this.bond[id] = Math.max(0, Math.min(3, (this.bond[id] ?? 1) + d));
+    return this.bond[id];
   }
 
   member(id: string) {
@@ -88,7 +111,7 @@ export class GameState {
   /** Arts unlocked by the hero's board lines. */
   artsOf(m: Member): string[] {
     if (m.kind !== 'hero') return [];
-    return artsFor(BOARDS[m.id as 'kai' | 'lyra'], this.boards[m.id] ?? []).map((a) => a.skill.id);
+    return artsFor(m.id as 'kai' | 'lyra', this.boards[m.id] ?? []).map((a) => a.skill.id);
   }
 
   partEffects(m: Member): Set<PartEffect> {
@@ -107,12 +130,20 @@ export class GameState {
   addCrystals(c: Partial<Record<Element, number>>) {
     for (const [e, n] of Object.entries(c)) this.crystals[e as Element] += n ?? 0;
   }
-  hasCrystals(c: Partial<Record<Element, number>>) {
-    return Object.entries(c).every(([e, n]) => this.crystals[e as Element] >= (n ?? 0));
+  hasCrystals(c: CrystalCost) {
+    const total = Object.values(this.crystals).reduce((a, b) => a + b, 0);
+    const named = Object.entries(c).filter(([e]) => e !== 'any');
+    const namedSum = named.reduce((a, [, n]) => a + (n ?? 0), 0);
+    return named.every(([e, n]) => this.crystals[e as Element] >= (n ?? 0)) && total - namedSum >= (c.any ?? 0);
   }
-  spendCrystals(c: Partial<Record<Element, number>>) {
+  spendCrystals(c: CrystalCost) {
     if (!this.hasCrystals(c)) return false;
-    for (const [e, n] of Object.entries(c)) this.crystals[e as Element] -= n ?? 0;
+    for (const [e, n] of Object.entries(c)) if (e !== 'any') this.crystals[e as Element] -= n ?? 0;
+    // "any": take from the largest stocks first
+    for (let k = c.any ?? 0; k > 0; k--) {
+      const e = (Object.keys(this.crystals) as Element[]).sort((a, b) => this.crystals[b] - this.crystals[a])[0];
+      this.crystals[e]--;
+    }
     return true;
   }
 
@@ -157,6 +188,7 @@ export class GameState {
     const m: Member = { id: sp.id, kind: 'monster', name: sp.name, level, xp: 0, hp: 0, model: sp.model, color: sp.color };
     m.hp = this.stats(m).hp;
     this.roster.push(m);
+    this.bond[m.id] = 1;
     if (this.active.length < 3) this.active.push(m.id);
     return { absorbed: false, member: m, xp: 0, levelUp: null };
   }

@@ -4,7 +4,7 @@ import { getModel } from '../core/assets';
 import { Sfx } from '../core/audio';
 import { Input } from '../core/input';
 import { dampAngle, rand } from '../core/utils';
-import type { SpawnDef } from '../data/world';
+import type { SpawnDef } from '../data/zones';
 import { SPECIES, type SpeciesDef } from '../data/units';
 import { SteamVent } from '../fx/effects';
 import type { FieldMode } from './field';
@@ -66,7 +66,8 @@ export class FieldEnemy {
   }
   /** Whether this enemy can be killed in the field (weak tier only). */
   get killable() {
-    return this.sp.tier === 'weak';
+    // story creatures (passive) are never cut down in the field
+    return this.sp.tier === 'weak' && !this.spawn.passive;
   }
 
   private set(s: EState) {
@@ -108,7 +109,7 @@ export class FieldEnemy {
           if (d.length() < 0.5 || this.t > 6) { this.pickWander(); this.set('idle'); }
           else { faceTo(d, 4); speed = f.speed * 0.35; }
         }
-        if (dist < f.detect && this.field.controlsEnabled && player.invuln <= 0) {
+        if (dist < f.detect && this.field.controlsEnabled && player.invuln <= 0 && !this.passive) {
           this.set('notice');
           this.field.hud.alert(this);
           Sfx.play('alert');
@@ -190,7 +191,7 @@ export class FieldEnemy {
         faceTo(d, 5);
         speed = f.speed * 0.8;
         if (d.length() < 1) { this.set('idle'); }
-        if (dist < f.detect * 0.6 && this.t > 2 && this.field.controlsEnabled) this.set('chase');
+        if (dist < f.detect * 0.6 && this.t > 2 && this.field.controlsEnabled && !this.passive) this.set('chase');
         break;
       }
       case 'dead': {
@@ -263,10 +264,16 @@ export class FieldEnemy {
       const away = new THREE.Vector3().subVectors(this.pos, this.field.player.pos).setY(0).normalize();
       this.pos.addScaledVector(away, heavy ? 1.2 : 0.45);
       this.field.resolveCollisions(this.pos, this.radius * 0.8, false, this);
-    } else if (this.state === 'idle' || this.state === 'wander' || this.state === 'return') {
+    } else if (!this.passive && (this.state === 'idle' || this.state === 'wander' || this.state === 'return')) {
       this.set('chase');
     }
     return true;
+  }
+
+  /** Story creatures that won't pick a fight (a cowering rat, a quest-giver waiting to talk). */
+  get passive() {
+    const p = this.spawn.passive;
+    return typeof p === 'function' ? p() : !!p;
   }
 
   /** After returning from a battle the player fled from. */
@@ -274,6 +281,13 @@ export class FieldEnemy {
     this.anim.stunned = false;
     this.brk = 0;
     this.set('cooldown');
+  }
+
+  /** Leaving the zone: drop the DOM plate and any telegraph. */
+  dispose() {
+    this.clearTelegraph();
+    this.ui?.root.remove();
+    this.ui = null;
   }
 
   reset() {

@@ -24,6 +24,8 @@ export interface SkillDef {
   delay?: number;
   /** Own next turn comes after this × the usual interval (default: 1, or 1.25 for 4+ AP skills). */
   tempo?: number;
+  /** Kai: 열압 change when used (default: AP × 12). */
+  heat?: number;
   /** Kai: spends all 열압 — power grows with the heat vented. */
   vent?: boolean;
   /** Lyra: fuses the two stored 회로 각인 into a higher spell (resolved at use, see fuseSkill). */
@@ -54,6 +56,15 @@ export const SKILLS: Record<string, SkillDef> = {
   whirl_slash: { id: 'whirl_slash', name: '회전 베기', desc: '할버드로 적 전체를 2회 벤다.', ap: 4, target: 'allEnemies', kind: 'phys', element: 'phys', power: 0.95, hits: 2, qte: 2, breakPower: 12, anim: 'spin', melee: true },
   knights_oath: { id: 'knights_oath', name: '기사의 맹세', desc: '아군 전체 3턴간 공격↑.', ap: 3, target: 'allAllies', kind: 'buff', element: 'phys', power: 0, hits: 1, qte: 1, breakPower: 0, anim: 'cast', melee: false, status: { id: 'atkUp', turns: 3, chance: 1 } },
   furnace_punch: { id: 'furnace_punch', name: '용광로 펀치', desc: '작열하는 주먹. 브레이크 수치를 크게 채운다.', ap: 4, target: 'enemy', kind: 'phys', element: 'fire', power: 2.6, hits: 1, qte: 1, breakPower: 60, anim: 'heavy', melee: true },
+  // --- chapter 1 monsters ------------------------------------------------------
+  prism_veil: { id: 'prism_veil', name: '프리즘 장막', desc: '빛의 막으로 아군 전체 3턴간 방어↑.', ap: 3, target: 'allAllies', kind: 'buff', element: 'aether', power: 0, hits: 1, qte: 1, breakPower: 0, anim: 'cast', melee: false, status: { id: 'defUp', turns: 3, chance: 1 } },
+  spectrum_dart: { id: 'spectrum_dart', name: '분광 화살', desc: '빛을 쪼개 쏜다. 명중하면 대상의 약점 하나가 드러난다.', ap: 2, target: 'enemy', kind: 'magic', element: 'aether', power: 1.3, hits: 1, qte: 1, breakPower: 12, anim: 'cast', melee: false },
+  bellows_pump: { id: 'bellows_pump', name: '풀무질', desc: '아군 하나에 뜨거운 바람. 3턴간 공격↑.', ap: 2, target: 'ally', kind: 'buff', element: 'fire', power: 0, hits: 1, qte: 1, breakPower: 0, anim: 'cast', melee: false, status: { id: 'atkUp', turns: 3, chance: 1 } },
+  ember_burp: { id: 'ember_burp', name: '불씨 트림', desc: '적 전체에 불티를 뱉는다. 확률로 화상.', ap: 3, target: 'allEnemies', kind: 'magic', element: 'fire', power: 0.7, hits: 1, qte: 1, breakPower: 6, anim: 'cast', melee: false, status: { id: 'burn', turns: 2, chance: 0.4 } },
+  vault_wall: { id: 'vault_wall', name: '금고 방벽', desc: '아군 하나를 금고 문으로 가린다. 3턴간 방어↑.', ap: 3, target: 'ally', kind: 'buff', element: 'phys', power: 0, hits: 1, qte: 1, breakPower: 0, anim: 'cast', melee: false, status: { id: 'defUp', turns: 3, chance: 1 } },
+  coin_volley: { id: 'coin_volley', name: '동전 일제 사격', desc: '금고 속 동전을 네 번 쏟아 낸다.', ap: 3, target: 'enemy', kind: 'phys', element: 'phys', power: 0.5, hits: 4, qte: 2, breakPower: 4, anim: 'lunge', melee: false },
+  noon_bell: { id: 'noon_bell', name: '정오의 종', desc: '노래하는 종소리로 아군 전체 회복.', ap: 4, target: 'allAllies', kind: 'heal', element: 'aether', power: 0.6, hits: 1, qte: 1, breakPower: 0, anim: 'cast', melee: false },
+  peal_strike: { id: 'peal_strike', name: '공명 타종', desc: '해머 세 번으로 적 전체를 울린다. 브레이크 대량.', ap: 5, target: 'allEnemies', kind: 'phys', element: 'phys', power: 0.7, hits: 3, qte: 3, breakPower: 6, anim: 'heavy', melee: true },
   // --- monster late skills (learned at a level after recruiting) -------------
   scrap_swarm: { id: 'scrap_swarm', name: '고철 떼', desc: '동족을 불러 적 전체를 물어뜯는다.', ap: 4, target: 'allEnemies', kind: 'phys', element: 'phys', power: 0.45, hits: 3, qte: 2, breakPower: 8, anim: 'lunge', melee: true },
   pressure_wash: { id: 'pressure_wash', name: '고압 세척', desc: '뜨거운 물줄기. 적 하나에 화염 피해 + 지연.', ap: 3, target: 'enemy', kind: 'magic', element: 'fire', power: 1.6, hits: 1, qte: 1, breakPower: 12, anim: 'cast', melee: false, delay: 25 },

@@ -101,6 +101,19 @@ export const PERSONALITIES: Record<PersonalityId, Personality> = {
     join: ['부오오... 너희를 따라가면... 연료가 끊이지 않겠지.'],
     refuse: ['부족하다... 아직 부족해...'],
   },
+  lonely: {
+    name: '고독', desc: '오래 혼자였던 기령. 빈말은 금방 알아채고, 곁에 있어 주겠다는 진심에 약하다.',
+    likes: { kind: 2, bold: 1, witty: 1, logical: -1, flatter: -2, threat: -1 },
+    base: 0.25, demandRate: 0.3,
+    greet: ['…누구냐.'],
+    greetBroken: ['…멈췄군.'],
+    like: ['…그 말, 오랜만에 듣는다.'],
+    neutral: ['…그런가.'],
+    dislike: ['빈말이군.'],
+    angry: ['나가라. 혼자가 낫다!'],
+    join: ['…곁에 있겠다는 말, 믿어 보마.'],
+    refuse: ['아직은 혼자인 쪽이 덜 아프다.'],
+  },
 };
 
 export interface Question {
@@ -197,6 +210,10 @@ export const DEMANDS: Record<PersonalityId, Demand[]> = {
   ],
   honorable: [
     { kind: 'hp', amount: 0.2, text: '그대의 각오를 보이라. 피로써.' },
+  ],
+  lonely: [
+    { kind: 'hp', amount: 0.2, text: '…곁에 있겠다면, 그 온기를 조금 나눠 다오.' },
+    { kind: 'item', item: 'heart', text: '멈춘 것을 다시 감는 심장… 그것을 주겠나.' },
   ],
   greedy: [
     { kind: 'money', amount: 100, text: '기어... 100개... 화로에 넣을 연료를...' },

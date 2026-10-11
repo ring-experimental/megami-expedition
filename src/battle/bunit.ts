@@ -47,6 +47,12 @@ export class BUnit {
   heat = 0;
   /** Lyra's 회로 각인: elements of her last offensive spells (max 2, oldest first). */
   sigils: Element[] = [];
+  /** Silenced by a hush needle: no answer to talk, can't be recruited. */
+  hushed = false;
+  /** firstHitGuard already spent / parryAp turn / once-per-battle moves used */
+  guardUsed = false;
+  parryApTurn = -1;
+  usedOnce = new Set<string>();
   /** 부품 effects slotted on this hero's board. */
   effects = new Set<PartEffect>();
   /** Turn-order bonus picked up this turn (applies to the action taken in it). */
