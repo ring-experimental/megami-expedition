@@ -40,6 +40,7 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
   }
 
   enemy.talks++;
+  if (enemy.talks === 1 && talker.effects.has('talkMood')) enemy.mood += 1;
   await ui.say(name, enemy.broken ? pick(per.greetBroken) : pick(per.greet), col, sp.id);
   if (opts.cornered) await ui.say('시스템', '도망칠 곳이 없다 — 상대가 귀를 기울인다. (영입 확률 +25%)', '#9aa2ad');
   if (enemy.talks === 1 && showHints) {

@@ -21,8 +21,16 @@ import { HEROES, SPECIES, xpToNext } from '../data/units';
 import { SKILLS } from '../data/skills';
 import { ITEMS } from '../data/items';
 import { PERSONALITIES } from '../data/negotiation';
+import { ARTS, BOARDS, CRYSTAL_NAME, EFFECT_DESC, PARTS, artsFor, lineTotals } from '../data/parts';
+import { MAX_INHERITED, fusionResult } from '../data/fusion';
 
-const PAUSE_TABS: [string, string][] = [['party', '파티 편성'], ['bestiary', '몬스터 도감'], ['items', '소지품'], ['save', '저장 · 불러오기'], ['settings', '설정'], ['controls', '조작법']];
+const STAT_KO: Record<string, string> = { hp: 'HP', atk: '공격', mag: '마력', def: '방어', res: '저항', spd: '속도' };
+const costHtml = (c: Partial<Record<Element, number>>) => Object.entries(c).map(([e, n]) => `${icon('el', e, ELEMENT_NAME[e as Element])}${n}`).join(' ');
+const needHtml = (c: Partial<Record<Element, number>>) => Object.entries(c).map(([e, n]) => `${ELEMENT_NAME[e as Element]} ${n}`).join(' + ');
+
+const ALL_TABS: [string, string][] = [['party', '파티 편성'], ['board', '부품'], ['workshop', '공방'], ['bestiary', '몬스터 도감'], ['items', '소지품'], ['save', '저장 · 불러오기'], ['settings', '설정'], ['controls', '조작법']];
+/** The 공방 tab appears once the party has reached the workshop (story flag). */
+const pauseTabs = () => ALL_TABS.filter(([id]) => id !== 'workshop' || State.current.flag('workshop'));
 
 export class Menus {
   private title: HTMLElement | null = null;
@@ -189,11 +197,11 @@ export class Menus {
   }
 
   private cycleTab(dir: number) {
-    const i = PAUSE_TABS.findIndex(([id]) => id === this.tab);
-    this.tab = PAUSE_TABS[(i + dir + PAUSE_TABS.length) % PAUSE_TABS.length][0];
+    const i = pauseTabs().findIndex(([id]) => id === this.tab);
+    this.tab = pauseTabs()[(i + dir + pauseTabs().length) % pauseTabs().length][0];
     Sfx.play('ui_move');
     this.renderPause();
-    const tab = this.pause?.querySelectorAll<HTMLElement>('.mn-tab')[PAUSE_TABS.findIndex(([id]) => id === this.tab)];
+    const tab = this.pause?.querySelectorAll<HTMLElement>('.mn-tab')[pauseTabs().findIndex(([id]) => id === this.tab)];
     if (tab) this.nav.focus(tab);
   }
 
@@ -225,7 +233,7 @@ export class Menus {
       this.game.setMode('title'); // leaving the field also closes this menu
     };
     const tabs = p.querySelector('.mn-tabs') as HTMLElement;
-    PAUSE_TABS.forEach(([id, label], i) => {
+    pauseTabs().forEach(([id, label], i) => {
       const b = el('button', 'mn-tab' + (id === this.tab ? ' on' : ''), `<span>${label}</span>`, tabs);
       b.style.setProperty('--i', String(i));
       b.onclick = () => { if (this.tab !== id && !this.partyPick) { Sfx.play('ui_move'); this.tab = id; this.renderPause(); } };
@@ -247,7 +255,7 @@ export class Menus {
     const st = State.current;
     p.querySelector('.mn-modal')?.remove();
     (p.querySelector('.mn-money b') as HTMLElement).textContent = String(st.money);
-    p.querySelectorAll('.mn-tab').forEach((b, i) => b.classList.toggle('on', PAUSE_TABS[i][0] === this.tab));
+    p.querySelectorAll('.mn-tab').forEach((b, i) => b.classList.toggle('on', pauseTabs()[i][0] === this.tab));
     const body = p.querySelector('.mn-body') as HTMLElement;
     body.innerHTML = '';
     body.className = `mn-body tab-${this.tab}`;
@@ -255,6 +263,8 @@ export class Menus {
     else if (this.tab === 'bestiary') this.renderBestiary(body);
     else if (this.tab === 'items') this.renderItems(body);
     else if (this.tab === 'save') this.renderSave(body);
+    else if (this.tab === 'board') this.renderBoard(body);
+    else if (this.tab === 'workshop') this.renderWorkshop(body);
     else if (this.tab === 'settings') this.renderSettings(body);
     else this.renderControls(body);
   }
@@ -354,6 +364,172 @@ export class Menus {
     // a click on the dimmed backdrop also says no
     d.addEventListener('click', (e) => { if (e.target === d) this.cancelPick(); });
     return d.querySelector('.mm-box') as HTMLElement;
+  }
+
+  // -------------------------------------------------------------------------
+  // 부품 board (data/parts.ts): slots joined by lines, arts from each line's element totals
+  // -------------------------------------------------------------------------
+  private boardHero: 'kai' | 'lyra' = 'kai';
+
+  private renderBoard(body: HTMLElement) {
+    const st = State.current;
+    const hero = this.boardHero;
+    const def = BOARDS[hero];
+    const slots = st.boards[hero];
+    const open = st.boardOpen[hero];
+    const heads = el('div', 'bd-heads', undefined, body);
+    (['kai', 'lyra'] as const).forEach((h) => {
+      const b = el('button', `mn-btn small bd-head${h === hero ? ' on' : ''}`, `${HEROES[h].name} · ${BOARDS[h].name}`, heads);
+      if (h === hero) b.dataset.padFirst = '';
+      b.onclick = () => { if (this.boardHero !== h) { this.boardHero = h; Sfx.play('ui_move'); this.renderPause(); } };
+    });
+    el('div', 'bd-crystals', (Object.keys(CRYSTAL_NAME) as Element[]).map((e) => `<span title="${CRYSTAL_NAME[e]}">${icon('el', e, ELEMENT_NAME[e])}<b>${st.crystals[e]}</b></span>`).join(''), heads);
+    const wrap = el('div', 'bd-wrap', undefined, body);
+    const panel = el('div', 'bd-panel', undefined, wrap);
+    const lineSvg = def.lines.map((line, li) => `<polyline class="bd-line l${li}" points="${line.map((i) => def.pos[i].join(',')).join(' ')}"/>`).join('');
+    el('div', 'bd-svg', `<svg viewBox="0 0 100 100" preserveAspectRatio="none">${lineSvg}</svg>`, panel);
+    const info = el('div', 'bd-info', '', wrap);
+    def.pos.forEach(([x, y], i) => {
+      const id = slots[i];
+      const locked = !open.includes(i);
+      const p = id ? PARTS[id] : null;
+      const pips = p ? Object.entries(p.elem).map(([e, v]) => `<i>${icon('el', e, ELEMENT_NAME[e as Element])}${v}</i>`).join('') : '';
+      const b = el('button', `bd-slot${locked ? ' locked' : ''}${p ? ' full' : ''}`, locked
+        ? `<span class="bd-lock">🔒</span><small>${costHtml(def.unlock[i] ?? {})}</small>`
+        : p ? `<span class="bd-pn">${p.name}</span><span class="bd-pips">${pips}</span>` : '<span class="bd-empty">빈 슬롯</span>', panel);
+      b.style.left = `${x}%`;
+      b.style.top = `${y}%`;
+      b.onclick = () => (locked ? this.unlockSlot(hero, i) : this.pickPart(hero, i));
+    });
+    // right: line totals, arts, effects
+    const totals = lineTotals(def, slots);
+    const arts = artsFor(def, slots);
+    const m = st.member(hero);
+    const effects = [...st.partEffects(m)];
+    info.innerHTML = `<div class="mn-sec">라인</div>${totals.map((t, li) => `<div class="bd-tot"><span class="bd-ln l${li}">라인 ${li + 1}</span>${(Object.entries(t) as [Element, number][]).map(([e, v]) => `${icon('el', e, ELEMENT_NAME[e])}<b>${v}</b>`).join(' ') || '<span class="dim">비어 있음</span>'}</div>`).join('')}
+      <div class="mn-sec">아츠</div>${arts.length ? arts.map((a) => `<div class="bd-art">${icon('el', a.skill.element, '')}<b>${a.skill.name}</b> <span class="dim">${a.skill.ap} AP · ${a.skill.desc}</span></div>`).join('') : '<div class="mn-note">한 라인의 속성 합이 조건에 닿으면 아츠가 열립니다.</div>'}
+      <div class="bd-next dim">${ARTS.filter((a) => !arts.includes(a)).slice(0, 4).map((a) => `${a.skill.name} — ${needHtml(a.need)}`).join(' · ')}</div>
+      ${effects.length ? `<div class="mn-sec">효과</div>${effects.map((e) => `<div class="bd-art">${EFFECT_DESC[e]}</div>`).join('')}` : ''}`;
+  }
+
+  private pickPart(hero: 'kai' | 'lyra', slot: number) {
+    const st = State.current;
+    const cur = st.boards[hero][slot];
+    const owned = Object.keys(PARTS).filter((id) => (st.parts[id] ?? 0) > 0);
+    const rows = owned.map((id) => {
+      const p = PARTS[id];
+      const free = st.partsFree(id);
+      // a hero can't slot the same part twice
+      const dup = id !== cur && st.boards[hero].includes(id);
+      const ok = id === cur || (free > 0 && !dup);
+      const stats = p.stats ? Object.entries(p.stats).map(([k, v]) => `${STAT_KO[k]} +${v}`).join(' ') : '';
+      return `<button class="bd-pick${ok ? '' : ' off'}${id === cur ? ' cur' : ''}" data-id="${id}"><b>${p.name}</b><span class="bd-pips">${Object.entries(p.elem).map(([e, v]) => `<i>${icon('el', e, '')}${v}</i>`).join('')}</span>
+        <span class="dim">${[stats, p.effect ? EFFECT_DESC[p.effect] : ''].filter(Boolean).join(' · ')}</span><span class="bd-n">${dup ? '장착 중' : `×${free}`}</span></button>`;
+    }).join('');
+    const d = el('div', 'mn-modal', `<div class="mm-box bd-modal"><div class="mm-q">${BOARDS[hero].name} · 슬롯 ${slot + 1}</div><div class="bd-picks">${rows || '<div class="mn-note">가진 부품이 없습니다.</div>'}</div>
+      <div class="mm-btns">${cur ? '<button class="mn-btn clear">비우기</button>' : ''}<button class="mn-btn no">닫기</button></div></div>`, this.pause!);
+    this.nav.reset();
+    this.pickRoot = d.querySelector('.mm-box') as HTMLElement;
+    this.partyPick = { id: '', step: 'ask' }; // reuse the modal focus confinement
+    const close = () => { this.partyPick = null; this.pickRoot = null; this.renderPause(); };
+    d.querySelectorAll<HTMLElement>('.bd-pick').forEach((b) => {
+      b.onclick = () => {
+        if (b.classList.contains('off')) { Sfx.play('ui_error'); return; }
+        st.boards[hero][slot] = b.dataset.id === cur ? null : b.dataset.id!;
+        Sfx.play('ui_ok');
+        this.syncHp(hero);
+        close();
+      };
+    });
+    (d.querySelector('.clear') as HTMLElement | null)?.addEventListener('click', () => { st.boards[hero][slot] = null; Sfx.play('ui_back'); this.syncHp(hero); close(); });
+    (d.querySelector('.no') as HTMLElement).onclick = () => { Sfx.play('ui_back'); close(); };
+    d.addEventListener('click', (e) => { if (e.target === d) { Sfx.play('ui_back'); close(); } });
+    const first = d.querySelector<HTMLElement>('.bd-pick:not(.off)') ?? d.querySelector<HTMLElement>('.mn-btn');
+    if (first) this.nav.focus(first);
+  }
+
+  /** HP stays within the (possibly lower) max after a part with HP comes off. */
+  private syncHp(hero: string) {
+    const st = State.current;
+    const m = st.member(hero);
+    m.hp = Math.min(m.hp, st.stats(m).hp);
+  }
+
+  private unlockSlot(hero: 'kai' | 'lyra', slot: number) {
+    const st = State.current;
+    const cost = BOARDS[hero].unlock[slot] ?? {};
+    if (!st.hasCrystals(cost)) { Sfx.play('ui_error'); this.game.ui.toast(`속성 결정이 부족합니다: ${costHtml(cost)}`, 'red'); return; }
+    st.spendCrystals(cost);
+    st.boardOpen[hero].push(slot);
+    Sfx.play('chest');
+    this.game.ui.toast(`${BOARDS[hero].name}의 슬롯 ${slot + 1}이(가) 열렸다`, 'gold');
+    this.renderPause();
+  }
+
+  // -------------------------------------------------------------------------
+  // 공방: part crafting, monster inheritance / fusion
+  // -------------------------------------------------------------------------
+  private forge: { base?: string; mat?: string } = {};
+
+  private renderWorkshop(body: HTMLElement) {
+    const st = State.current;
+    el('div', 'mn-sec', '부품 제작', body);
+    const list = el('div', 'ws-list', undefined, body);
+    for (const p of Object.values(PARTS)) {
+      if (!p.craft) continue;
+      const can = st.hasCrystals(p.craft.crystals) && st.money >= p.craft.money;
+      const r = el('button', `ws-row${can ? '' : ' off'}`, `<b>${p.name}</b><span class="bd-pips">${Object.entries(p.elem).map(([e, v]) => `<i>${icon('el', e, '')}${v}</i>`).join('')}</span>
+        <span class="dim">${p.effect ? EFFECT_DESC[p.effect] : p.stats ? Object.entries(p.stats).map(([k, v]) => `${STAT_KO[k]} +${v}`).join(' ') : ''}</span>
+        <span class="ws-cost">${costHtml(p.craft.crystals)} · ⚙${p.craft.money}</span><span class="bd-n">보유 ${st.parts[p.id] ?? 0}</span>`, list);
+      r.onclick = () => {
+        if (!can) { Sfx.play('ui_error'); return; }
+        st.spendCrystals(p.craft!.crystals);
+        st.money -= p.craft!.money;
+        st.parts[p.id] = (st.parts[p.id] ?? 0) + 1;
+        Sfx.play('chest');
+        this.game.ui.toast(`${p.name} 제작 완료`, 'gold');
+        this.renderPause();
+      };
+    }
+    el('div', 'mn-sec', '기령 합주 · 계승', body);
+    const mons = st.roster.filter((m) => m.kind === 'monster');
+    const f = this.forge;
+    bindInput(el('div', 'mn-note', '', body), () => !f.base ? '남길 동료(바탕)를 고르세요. 재료가 된 동료는 파티를 떠납니다.'
+      : !f.mat ? `<b>${st.member(f.base).name}</b>에게 합칠 재료를 고르세요.` : '물려받을 스킬을 고르세요.');
+    const row = el('div', 'ws-mons', undefined, body);
+    if (mons.length < 2) el('div', 'mn-note dim', '영입한 몬스터가 둘 이상 있어야 합니다.', row);
+    for (const m of mons) {
+      const sel = f.base === m.id || f.mat === m.id;
+      const c = el('button', `ws-mon${sel ? ' sel' : ''}`, `<div class="bs-chip" style="--c:${m.color}">${portraitInner(m.id, m.name)}</div><span>${m.name}<span class="lv">Lv${m.level}</span></span>`, row);
+      c.onclick = () => {
+        if (f.base === m.id) { this.forge = {}; Sfx.play('ui_back'); }
+        else if (!f.base) { f.base = m.id; Sfx.play('ui_ok'); }
+        else if (!f.mat) { f.mat = m.id; Sfx.play('ui_ok'); }
+        this.renderPause();
+      };
+    }
+    if (f.base && f.mat) {
+      const res = fusionResult(f.base, f.mat);
+      const base = st.member(f.base), mat = st.member(f.mat);
+      const box = el('div', 'ws-result', '', body);
+      if (res) {
+        const sp = SPECIES[res];
+        box.innerHTML = `<div class="ws-q"><b>${base.name}</b> + <b>${mat.name}</b> → <b class="kw">${sp.name}</b> <span class="dim">(합주: 두 동료가 하나가 된다)</span></div>`;
+        const b = el('button', 'mn-btn', '합주한다', box);
+        b.dataset.padFirst = '';
+        b.onclick = () => { const r = st.fuse(base.id, mat.id, res); this.forge = {}; Sfx.play('recruit'); this.game.ui.toast(`<b>${r.name}</b>이(가) 태어났다! Lv${r.level}`, 'gold', 3500); this.renderPause(); };
+      } else {
+        const skills = st.skillsOf(mat).filter((id) => !st.skillsOf(base).includes(id));
+        box.innerHTML = `<div class="ws-q"><b>${mat.name}</b>의 스킬 하나를 <b>${base.name}</b>에게 <span class="dim">(계승 ${(base.inherited ?? []).length}/${MAX_INHERITED} · 넘치면 가장 오래된 것을 잊음)</span></div>`;
+        for (const id of skills) {
+          const b = el('button', 'mn-btn small', `${icon('el', SKILLS[id].element, '')}${SKILLS[id].name}`, box);
+          b.onclick = () => { st.inherit(base.id, mat.id, id); this.forge = {}; Sfx.play('recruit'); this.game.ui.toast(`${base.name}이(가) <b>${SKILLS[id].name}</b>을(를) 물려받았다`, 'gold', 3000); this.renderPause(); };
+        }
+        if (!skills.length) el('div', 'mn-note', '물려줄 수 있는 새 스킬이 없습니다.', box);
+      }
+      const cancel = el('button', 'mn-btn small back', '다시 고르기', box);
+      cancel.onclick = () => { this.forge = {}; Sfx.play('ui_back'); this.renderPause(); };
+    }
   }
 
   /** Bestiary: species list on the left, a large entry on the right. */

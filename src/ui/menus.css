@@ -193,3 +193,58 @@ body.navfocus .pause-menu .pad-focus { outline: none; box-shadow: none; }
 .sv-meta { grid-column: 2; grid-row: 2 / 4; align-self: center; display: flex; flex-direction: column; align-items: flex-end; font: 700 12px var(--f-num); color: var(--gold); }
 .sv-slot.empty .sv-place { color: var(--bone-dim); }
 .ts-saves { width: min(640px, 100%); max-height: 56vh; overflow-y: auto; scrollbar-width: none; padding: 14px 18px; background: rgba(11, 9, 7, 0.88); }
+
+/* ---------- 부품 board (machine language: a brass dial with slots on lines) ---------- */
+.bd-heads { display: flex; align-items: center; gap: 10px; padding-left: 10px; }
+.bd-head { width: auto; padding: 0 22px; }
+.bd-head.on { color: var(--ink-0); }
+.bd-head.on::before { background: var(--gold-hi); border-left-color: var(--ink-0); }
+.bd-crystals { margin-left: auto; display: flex; gap: 12px; font: 800 14px var(--f-num); color: var(--gold-hi); }
+.bd-crystals span { display: inline-flex; align-items: center; gap: 3px; }
+.bd-crystals .ico, .bd-pips .ico, .bd-tot .ico, .bd-art .ico, .ws-cost .ico, .bd-slot small .ico { width: 1.1em; height: 1.1em; vertical-align: -0.2em; }
+.bd-wrap { display: flex; gap: 26px; margin-top: 14px; padding-left: 10px; }
+.bd-panel { position: relative; flex: none; width: 460px; height: 340px; border-radius: 50%; background: radial-gradient(circle, var(--ink-2) 0 55%, var(--ink-1) 56% 100%); box-shadow: inset 0 0 0 3px var(--gold-dk), inset 0 0 0 9px var(--ink-1), inset 0 0 0 10px var(--gold-dk); }
+.bd-svg { position: absolute; inset: 0; }
+.bd-svg svg { width: 100%; height: 100%; }
+.bd-line { fill: none; stroke: var(--gold-dk); stroke-width: 1.4; vector-effect: non-scaling-stroke; stroke-width: 5px; stroke-linejoin: round; }
+.bd-line.l0 { stroke: var(--gold); }
+.bd-slot { position: absolute; width: 96px; height: 64px; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; border: none; cursor: pointer;
+  background: var(--ink-0); color: var(--bone); font-family: var(--f-cmd); clip-path: polygon(12% 0, 100% 0, 88% 100%, 0 100%); box-shadow: inset 0 0 0 2px var(--gold-dk); transition: transform 0.14s var(--ease-pop); }
+.bd-slot.full { box-shadow: inset 0 0 0 2px var(--gold); }
+.bd-slot:hover, body.navfocus .bd-slot.pad-focus { transform: translate(-50%, -50%) scale(1.08); background: var(--gold-hi); color: var(--ink-0); }
+.bd-slot:hover .dim, body.navfocus .bd-slot.pad-focus .dim { color: var(--ink-2); }
+.bd-slot.locked { opacity: 0.75; }
+.bd-pn { font: 800 13px var(--f-cmd); }
+.bd-empty { font: 400 12px var(--f-body); color: var(--bone-dim); }
+.bd-lock { font-size: 14px; }
+.bd-slot small { font: 700 11px var(--f-num); }
+.bd-pips { display: inline-flex; gap: 4px; font: 800 11px var(--f-num); }
+.bd-pips i { font-style: normal; display: inline-flex; align-items: center; gap: 1px; }
+.bd-info { flex: 1; min-width: 0; }
+.bd-tot { display: flex; align-items: center; gap: 6px; margin: 4px 0; font: 800 14px var(--f-num); color: var(--gold-hi); }
+.bd-ln { padding: 0 8px; font: 800 12px var(--f-cmd); color: var(--ink-0); background: var(--gold-dk); }
+.bd-ln.l0 { background: var(--gold); }
+.bd-art { margin: 4px 0; font: 700 14px var(--f-cmd); color: var(--bone); }
+.bd-art .dim { font: 400 12px var(--f-body); }
+.bd-next { margin-top: 6px; font: 400 12px/1.6 var(--f-body); }
+.bd-modal { width: min(640px, 92%); }
+.bd-picks { display: flex; flex-direction: column; gap: 4px; max-height: 48vh; overflow-y: auto; scrollbar-width: none; margin: 10px 0; }
+.bd-pick, .ws-row { position: relative; isolation: isolate; display: grid; grid-template-columns: 9em 7em 1fr auto auto; align-items: center; gap: 10px; padding: 7px 18px; border: none; background: none; cursor: pointer; text-align: left; color: var(--bone); font: 700 14px var(--f-cmd); }
+.bd-pick { grid-template-columns: 9em 7em 1fr auto; }
+.bd-pick::before, .ws-row::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--ink-2); transform: skewX(-10deg); border-left: 3px solid var(--gold-dk); }
+.bd-pick .dim, .ws-row .dim { font: 400 12px var(--f-body); }
+.bd-pick.cur::before { border-left-color: var(--gold-hi); }
+.bd-pick.off, .ws-row.off { opacity: 0.45; }
+.bd-pick:hover::before, body.navfocus .bd-pick.pad-focus::before, .ws-row:hover::before, body.navfocus .ws-row.pad-focus::before { background: var(--gold-hi); }
+.bd-pick:hover, body.navfocus .bd-pick.pad-focus, .ws-row:hover, body.navfocus .ws-row.pad-focus { color: var(--ink-0); }
+.bd-pick:hover .dim, body.navfocus .bd-pick.pad-focus .dim, .ws-row:hover .dim, body.navfocus .ws-row.pad-focus .dim { color: var(--ink-2); }
+.bd-n { font: 800 12px var(--f-num); color: var(--gold); }
+/* ---------- 공방 ---------- */
+.ws-list { display: flex; flex-direction: column; gap: 4px; max-width: 900px; padding-left: 10px; }
+.ws-cost { font: 800 12px var(--f-num); color: var(--gold-hi); white-space: nowrap; }
+.ws-mons { display: flex; flex-wrap: wrap; gap: 10px; padding-left: 10px; }
+.ws-mon { display: flex; align-items: center; gap: 8px; padding: 4px 16px 4px 4px; border: none; cursor: pointer; background: var(--ink-1); color: var(--bone); font: 700 14px var(--f-cmd); clip-path: polygon(6% 0, 100% 0, 94% 100%, 0 100%); }
+.ws-mon.sel, .ws-mon:hover, body.navfocus .ws-mon.pad-focus { background: var(--gold-hi); color: var(--ink-0); }
+.ws-mon .bs-chip { width: 40px; height: 40px; }
+.ws-result { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 0 10px; }
+.ws-q { flex-basis: 100%; font: 400 14px var(--f-body); }

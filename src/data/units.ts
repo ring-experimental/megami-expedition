@@ -74,6 +74,8 @@ export interface SpeciesDef {
   field: { speed: number; detect: number; attack: 'lunge' | 'projectile'; windup: number; breakMax: number; poise: number };
   moves: EnemyMove[];
   allySkills: string[];
+  /** Third skill the recruited ally learns at this level. */
+  lateSkill?: { id: string; level: number };
   xp: number;
   money: number;
   drops: { item: string; chance: number }[];
@@ -99,7 +101,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
       { id: 'bite', name: '물어뜯기', kind: 'melee', element: 'phys', stat: 'atk', power: 1.0, hits: [0], windup: [0.5, 0.9], weight: 3 },
       { id: 'gnaw', name: '톱니 연속 물기', kind: 'melee', element: 'phys', stat: 'atk', power: 0.5, hits: [0, 0.26, 0.48], windup: [0.6, 1.0], weight: 2 },
     ],
-    allySkills: ['gear_bite', 'wind_up'], xp: 14, money: 12, drops: [{ item: 'tonic', chance: 0.25 }],
+    allySkills: ['gear_bite', 'wind_up'], lateSkill: { id: 'scrap_swarm', level: 5 }, xp: 14, money: 12, drops: [{ item: 'tonic', chance: 0.25 }],
     height: 0.6, radius: 0.5, color: '#b8673a',
   },
   slime: {
@@ -113,7 +115,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
       { id: 'bounce', name: '통통 3연타', kind: 'melee', element: 'phys', stat: 'atk', power: 0.45, hits: [0, 0.42, 0.62], windup: [0.6, 0.9], weight: 2 },
       { id: 'steam_spout', name: '증기 분사', kind: 'ranged', element: 'fire', stat: 'mag', power: 0.65, hits: [0, 0.35], windup: [0.8, 1.1], weight: 2, status: { id: 'burn', turns: 2, chance: 0.3 } },
     ],
-    allySkills: ['steam_heal', 'jelly_guard'], xp: 18, money: 15, drops: [{ item: 'tonic', chance: 0.35 }],
+    allySkills: ['steam_heal', 'jelly_guard'], lateSkill: { id: 'pressure_wash', level: 6 }, xp: 18, money: 15, drops: [{ item: 'tonic', chance: 0.35 }],
     height: 0.85, radius: 0.55, color: '#3fd1b8',
   },
   wisp: {
@@ -127,7 +129,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
       { id: 'flicker', name: '명멸', kind: 'ranged', element: 'aether', stat: 'mag', power: 0.5, hits: [0, 0.14, 0.62], windup: [0.7, 1.0], weight: 2 },
       { id: 'ember_rain', name: '불티 비', kind: 'ranged', element: 'fire', stat: 'mag', power: 0.55, hits: [0, 0.4], windup: [1.0, 1.3], allTargets: true, weight: 1 },
     ],
-    allySkills: ['lamp_flame', 'will_o_wisp'], xp: 22, money: 18, drops: [{ item: 'capsule', chance: 0.25 }],
+    allySkills: ['lamp_flame', 'will_o_wisp'], lateSkill: { id: 'gaslight', level: 7 }, xp: 22, money: 18, drops: [{ item: 'capsule', chance: 0.25 }],
     height: 1.9, radius: 0.5, hover: 1.3, color: '#ffb347',
   },
   beetle: {
@@ -141,7 +143,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
       { id: 'shell_spin', name: '외피 회전', kind: 'melee', element: 'phys', stat: 'atk', power: 0.4, hits: [0, 0.2, 0.4, 0.6], windup: [0.7, 1.0], weight: 2 },
       { id: 'harden', name: '경화', kind: 'self', element: 'phys', stat: 'atk', power: 0, hits: [], windup: [0.4, 0.4], weight: 1, status: { id: 'defUp', turns: 3, chance: 1, self: true } },
     ],
-    allySkills: ['horn_rush', 'iron_shell'], xp: 40, money: 30, drops: [{ item: 'hi_tonic', chance: 0.3 }],
+    allySkills: ['horn_rush', 'iron_shell'], lateSkill: { id: 'shell_quake', level: 8 }, xp: 40, money: 30, drops: [{ item: 'hi_tonic', chance: 0.3 }],
     height: 0.9, radius: 0.8, color: '#c9a14a',
   },
   knight: {
@@ -156,7 +158,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
       { id: 'whirlwind', name: '발목 베기', kind: 'melee', element: 'phys', stat: 'atk', power: 0.7, hits: [0, 0.5], windup: [0.9, 1.2], allTargets: true, weight: 2, jump: true },
       { id: 'rewind', name: '태엽 되감기', kind: 'self', element: 'phys', stat: 'atk', power: 0, hits: [], windup: [0.5, 0.5], weight: 1, heal: 0.2 },
     ],
-    allySkills: ['whirl_slash', 'knights_oath'], xp: 80, money: 60, drops: [{ item: 'heart', chance: 0.4 }, { item: 'hi_tonic', chance: 0.4 }],
+    allySkills: ['whirl_slash', 'knights_oath'], lateSkill: { id: 'oath_counter', level: 10 }, xp: 80, money: 60, drops: [{ item: 'heart', chance: 0.4 }, { item: 'hi_tonic', chance: 0.4 }],
     height: 2.2, radius: 0.7, color: '#8a6a2c',
   },
   golem: {
@@ -172,7 +174,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
       { id: 'steam_burst', name: '증기 대폭발', kind: 'ranged', element: 'fire', stat: 'mag', power: 0.6, hits: [0, 0.25, 0.5], windup: [1.2, 1.4], allTargets: true, weight: 2, status: { id: 'burn', turns: 2, chance: 0.3 } },
       { id: 'stoke', name: '화력 증강', kind: 'self', element: 'fire', stat: 'atk', power: 0, hits: [], windup: [0.5, 0.5], weight: 1, status: { id: 'atkUp', turns: 3, chance: 1, self: true } },
     ],
-    allySkills: ['furnace_punch', 'steam_burst'], xp: 200, money: 150, drops: [{ item: 'heart', chance: 1 }, { item: 'capsule', chance: 1 }],
+    allySkills: ['furnace_punch', 'steam_burst'], lateSkill: { id: 'meltdown', level: 13 }, xp: 200, money: 150, drops: [{ item: 'heart', chance: 1 }, { item: 'capsule', chance: 1 }],
     height: 3.4, radius: 1.4, talkGate: 'brokenOrHalf', color: '#ffb347',
   },
 };

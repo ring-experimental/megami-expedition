@@ -6,6 +6,7 @@ import type { Member } from '../game/state';
 import { State } from '../game/state';
 import { HEROES, SPECIES, type HeroDef, type SpeciesDef } from '../data/units';
 import type { Element, Stats, StatusId } from '../data/types';
+import type { PartEffect } from '../data/parts';
 
 let uidSeq = 0;
 
@@ -46,6 +47,8 @@ export class BUnit {
   heat = 0;
   /** Lyra's 회로 각인: elements of her last offensive spells (max 2, oldest first). */
   sigils: Element[] = [];
+  /** 부품 effects slotted on this hero's board. */
+  effects = new Set<PartEffect>();
   /** Turn-order bonus picked up this turn (applies to the action taken in it). */
   bonus: 'crit' | 'brk' | null = null;
   /** Steam from a `steam_point` node (Kai's backpack, the golem's chimney); emitted by Battle. */
@@ -62,6 +65,7 @@ export class BUnit {
       this.maxHp = this.stats.hp;
       this.hp = Math.max(1, Math.min(m.hp, this.maxHp));
       this.skills = State.current.skillsOf(m);
+      this.effects = State.current.partEffects(m);
       this.color = m.color;
       if (m.kind === 'hero') this.hero = HEROES[m.id as 'kai' | 'lyra'];
       else this.species = SPECIES[m.id];

@@ -54,6 +54,13 @@ export const SKILLS: Record<string, SkillDef> = {
   whirl_slash: { id: 'whirl_slash', name: '회전 베기', desc: '할버드로 적 전체를 2회 벤다.', ap: 4, target: 'allEnemies', kind: 'phys', element: 'phys', power: 0.95, hits: 2, qte: 2, breakPower: 12, anim: 'spin', melee: true },
   knights_oath: { id: 'knights_oath', name: '기사의 맹세', desc: '아군 전체 3턴간 공격↑.', ap: 3, target: 'allAllies', kind: 'buff', element: 'phys', power: 0, hits: 1, qte: 1, breakPower: 0, anim: 'cast', melee: false, status: { id: 'atkUp', turns: 3, chance: 1 } },
   furnace_punch: { id: 'furnace_punch', name: '용광로 펀치', desc: '작열하는 주먹. 브레이크 수치를 크게 채운다.', ap: 4, target: 'enemy', kind: 'phys', element: 'fire', power: 2.6, hits: 1, qte: 1, breakPower: 60, anim: 'heavy', melee: true },
+  // --- monster late skills (learned at a level after recruiting) -------------
+  scrap_swarm: { id: 'scrap_swarm', name: '고철 떼', desc: '동족을 불러 적 전체를 물어뜯는다.', ap: 4, target: 'allEnemies', kind: 'phys', element: 'phys', power: 0.45, hits: 3, qte: 2, breakPower: 8, anim: 'lunge', melee: true },
+  pressure_wash: { id: 'pressure_wash', name: '고압 세척', desc: '뜨거운 물줄기. 적 하나에 화염 피해 + 지연.', ap: 3, target: 'enemy', kind: 'magic', element: 'fire', power: 1.6, hits: 1, qte: 1, breakPower: 12, anim: 'cast', melee: false, delay: 25 },
+  gaslight: { id: 'gaslight', name: '가스등 점멸', desc: '눈부신 빛으로 적 전체의 공격을 떨어뜨린다.', ap: 3, target: 'allEnemies', kind: 'magic', element: 'aether', power: 0.6, hits: 1, qte: 1, breakPower: 6, anim: 'cast', melee: false, status: { id: 'atkDown', turns: 3, chance: 0.7 } },
+  shell_quake: { id: 'shell_quake', name: '갑각 진동', desc: '땅을 울려 적 전체의 브레이크 수치를 채운다.', ap: 4, target: 'allEnemies', kind: 'phys', element: 'phys', power: 0.7, hits: 1, qte: 1, breakPower: 28, anim: 'heavy', melee: true },
+  oath_counter: { id: 'oath_counter', name: '맹세의 일격', desc: '번개를 두른 할버드 일격. 적의 턴을 크게 늦춘다.', ap: 4, target: 'enemy', kind: 'phys', element: 'volt', power: 2.3, hits: 1, qte: 2, breakPower: 30, anim: 'thrust', melee: true, delay: 45 },
+  meltdown: { id: 'meltdown', name: '노심 용해', desc: '화로를 개방해 적 전체를 녹인다. 다음 턴이 늦어진다.', ap: 7, target: 'allEnemies', kind: 'magic', element: 'fire', power: 1.5, hits: 2, qte: 2, breakPower: 15, anim: 'cast', melee: false, tempo: 1.5, status: { id: 'burn', turns: 3, chance: 0.5 } },
   steam_burst: { id: 'steam_burst', name: '증기 대폭발', desc: '적 전체에 고압 증기 3회.', ap: 6, target: 'allEnemies', kind: 'magic', element: 'fire', power: 1.0, hits: 3, qte: 3, breakPower: 10, anim: 'cast', melee: false },
 };
 

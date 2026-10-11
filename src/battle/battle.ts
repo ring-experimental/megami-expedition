@@ -18,6 +18,7 @@ import { BUnit } from './bunit';
 import { BattleUI, type MenuItem, type VictoryRow } from './battleUI';
 import { DefenseSession, QTE_MULT, QteSession, spaceHits, type DefenseResult, type QteGrade } from './timing';
 import { negotiate } from './negotiation';
+import { CRYSTAL_NAME, crystalDrop } from '../data/parts';
 import { TIPS, type TipId } from './tips';
 import { icon } from '../ui/art';
 
@@ -154,6 +155,11 @@ export class BattleMode {
     });
     for (const u of this.units) this.scene.add(u.obj);
     patchObject(this.scene); // cloned unit materials lose onBeforeCompile
+    // 부품 effects that act at the start
+    for (const p of this.party) if (p.effects.has('startHaste')) p.addStatus('haste', 2);
+    if (this.party.some((p) => p.effects.has('revealWeak'))) {
+      for (const e of this.enemies) { const b = st.bestiary[e.species!.id]; for (const k of Object.keys(e.species!.affinity)) if (!b.known.includes(k as Element)) b.known.push(k as Element); }
+    }
 
     // initial turn times (CTB)
     for (const u of this.units) u.ct = (100 / u.speed()) * rand(0.15, 0.9);
@@ -511,7 +517,7 @@ export class BattleMode {
     u.heat = Math.min(100, u.heat + v);
     if (u.heat < 100) return;
     u.heat = 0;
-    u.addStatus('overheat', 3);
+    u.addStatus('overheat', u.effects.has('heatVent') ? 4 : 3);
     Sfx.play('fire');
     this.fx.smoke.burst(u.centerPos(), 30, { color: 0xf4f1ea, speed: 4, up: 2, life: 1, size: 0.6, sizeEnd: 2.2, alpha: 0.6 });
     await this.bui.cutIn({ unit: u, title: '과열', sub: '공격 ×1.35 · 매 턴 HP 5% 소모' }, 0.45);
@@ -584,7 +590,7 @@ export class BattleMode {
             this.game.ui.popup(t.topPos(), sk.status.id === 'burn' ? '화상' : '상태 이상', 'info');
           }
         } else if (sk.kind === 'heal') {
-          const amt = Math.round(u.stats.mag * sk.power * 2.4 * mult + 10);
+          const amt = Math.round((u.stats.mag * sk.power * 2.4 * mult + 10) * (u.effects.has('healUp') ? 1.25 : 1));
           this.heal(t, amt);
         } else if (sk.kind === 'buff' && sk.status) {
           t.addStatus(sk.status.id, sk.status.turns + (grade === 'perfect' ? 1 : 0));
@@ -964,7 +970,8 @@ export class BattleMode {
       this.game.ui.popup(live[0]?.topPos() ?? e.topPos(), 'PARRY!', 'parry');
       if (!e.broken) this.addBreak(e, 5);
       // Kai vents boiler pressure into the parry
-      for (const t of live) if (t.hero?.id === 'kai') t.heat = Math.max(0, t.heat - 10);
+      for (const t of live) if (t.hero?.id === 'kai') t.heat = Math.max(0, t.heat - (t.effects.has('heatVent') ? 20 : 10));
+      for (const t of live) if (t.effects.has('parryAp')) t.ap = Math.min(9, t.ap + 1);
     } else if (res === 'jump') {
       Sfx.play('dodge');
       for (const t of live) void this.hop(t);
@@ -1003,7 +1010,7 @@ export class BattleMode {
       await this.tl.wait(0.2);
       this.fx.slash(u.pos.clone().add(new THREE.Vector3(0, 1.1, 0)), u.obj.rotation.y, 0xffe9a0, 2.4, 1.2, 0.25);
     }
-    this.hitUnit(u, e, { kind: ranged ? 'magic' : 'phys', element: u.hero?.basicElement ?? 'phys', power: 1.5, mult: 1, brk: 25 });
+    this.hitUnit(u, e, { kind: ranged ? 'magic' : 'phys', element: u.hero?.basicElement ?? 'phys', power: 1.5, mult: u.effects.has('counterUp') ? 1.5 : 1, brk: 25 });
     await this.tl.wait(0.4);
     if (!ranged) await this.returnHome(u);
   }
@@ -1043,7 +1050,7 @@ export class BattleMode {
     if (def.side === 'party') Input.rumble(0.7, 0.4, 160);
     if (def.hp <= 0) { this.ko(def); return; }
     def.anim.play('hit');
-    if (def.side === 'enemy' && o.brk > 0) this.addBreak(def, o.brk * (aff > 1 ? 1.3 : 1) * (att.bonus === 'brk' ? 2 : 1));
+    if (def.side === 'enemy' && o.brk > 0) this.addBreak(def, o.brk * (aff > 1 ? 1.3 : 1) * (att.bonus === 'brk' ? 2 : 1) * (att.effects.has('brkUp') ? 1.25 : 1));
   }
 
   private elementFx(el: Element, t: BUnit) {
@@ -1198,6 +1205,11 @@ export class BattleMode {
       st.money += money;
       const drops: string[] = [];
       for (const e of defeated) for (const d of e.species!.drops) if (chance(d.chance)) { st.addItem(d.item); drops.push(`${icon('item', d.item, ITEMS[d.item].icon)} ${ITEMS[d.item].name}`); }
+      // 속성 결정: each defeated creature leaves crystals of its own element
+      const cr: Partial<Record<Element, number>> = {};
+      for (const e of defeated) { const [el, n] = crystalDrop(e.species!); cr[el] = (cr[el] ?? 0) + n; }
+      st.addCrystals(cr);
+      for (const [el, n] of Object.entries(cr)) drops.push(`${icon('el', el, '◆')} ${CRYSTAL_NAME[el as Element]} ×${n}`);
       this.syncHp();
       // active members first, then the reserve (half EXP)
       const rows: VictoryRow[] = [];

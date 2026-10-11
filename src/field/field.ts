@@ -10,6 +10,7 @@ import { animateBackdrop, animateMotes, buildBackdrop, buildMotes, buildSky, get
 import { CHESTS, PLAYER_START, PROPS, REST_POINT, SPAWNS, WORLD_RADIUS, ZONE_NAME, type Circle, type ChestDef } from '../data/world';
 import { ITEMS } from '../data/items';
 import { SPECIES } from '../data/units';
+import { CRYSTAL_NAME, crystalDrop } from '../data/parts';
 import { State } from '../game/state';
 import { FieldHud } from '../ui/fieldHud';
 import { icon } from '../ui/art';
@@ -315,9 +316,11 @@ export class FieldMode {
     const xp = Math.round(group.reduce((s, sp) => s + sp.xp, 0) * 0.5);
     const money = Math.round(group.reduce((s, sp) => s + sp.money, 0) * 0.5);
     st.money += money;
+    const [el] = crystalDrop(e.sp);
+    st.addCrystals({ [el]: 1 });
     const ups = st.activeMembers().map((m) => st.giveXp(m, xp)).filter(Boolean);
     this.fx.sparks.burst(e.pos.clone().add(new THREE.Vector3(0, 0.6, 0)), 30, { color: 0xb8ffef, speed: 4, life: 0.8, size: 0.14, up: 1 });
-    this.game.ui.toast(`<b>${e.sp.name}</b> 필드 처치 · EXP +${xp} · ${money} 기어 <span class="dim">(턴제 전투보다 보상이 적고 영입 불가)</span>`);
+    this.game.ui.toast(`<b>${e.sp.name}</b> 필드 처치 · EXP +${xp} · ${money} 기어 · ${CRYSTAL_NAME[el]} ×1 <span class="dim">(턴제 전투보다 보상이 적고 영입 불가)</span>`);
     for (const u of ups) if (u) this.game.ui.toast(`<b>${u.name}</b> 레벨 업! Lv${u.from} → Lv${u.to}`, 'gold');
     if (ups.length) Sfx.play('levelup');
   }

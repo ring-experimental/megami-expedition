@@ -1,6 +1,8 @@
 import { HEROES, SPECIES, allyStats, heroStats, xpToNext } from '../data/units';
 import type { Difficulty, Element, Stats } from '../data/types';
 import { SKILLS } from '../data/skills';
+import { BOARDS, PARTS, artsFor, type PartEffect } from '../data/parts';
+import { MAX_INHERITED } from '../data/fusion';
 
 /** A persistent party member (hero or recruited monster). */
 export interface Member {
@@ -12,6 +14,8 @@ export interface Member {
   hp: number;
   model: string;
   color: string;
+  /** Monsters: skills inherited at the 공방 (max 2). */
+  inherited?: string[];
 }
 
 export interface LevelUpInfo { id: string; name: string; from: number; to: number; newSkills: string[] }
@@ -39,6 +43,12 @@ export class GameState {
   /** Where the party stands: zone id + position (written right before saving, read on load). */
   zone = 'plains';
   pos: { x: number; z: number; yaw: number } | null = null;
+  /** 부품 owned (count) and each hero's board: slot → part id; which slots are open. */
+  parts: Record<string, number> = { piston_ring: 1, ember_valve: 1, aether_lens: 1 };
+  boards: Record<string, (string | null)[]> = { kai: [null, null, null, null, null, null], lyra: [null, null, null, null, null, null] };
+  boardOpen: Record<string, number[]> = { kai: [...BOARDS.kai.open], lyra: [...BOARDS.lyra.open] };
+  /** 속성 결정 by element. */
+  crystals: Record<Element, number> = { phys: 0, fire: 0, frost: 0, volt: 0, aether: 0 };
   /** Story / quest progress: free-form counters and switches keyed by id. */
   flags: Record<string, number> = {};
 
@@ -56,13 +66,54 @@ export class GameState {
   }
 
   stats(m: Member): Stats {
-    if (m.kind === 'hero') return heroStats(HEROES[m.id as 'kai' | 'lyra'], m.level);
-    return allyStats(SPECIES[m.id], m.level);
+    if (m.kind !== 'hero') return allyStats(SPECIES[m.id], m.level);
+    const s = heroStats(HEROES[m.id as 'kai' | 'lyra'], m.level);
+    for (const id of this.boards[m.id] ?? []) {
+      const b = id ? PARTS[id]?.stats : null;
+      if (b) for (const [k, v] of Object.entries(b)) s[k as keyof Stats] += v ?? 0;
+    }
+    return s;
   }
 
   skillsOf(m: Member): string[] {
-    if (m.kind === 'hero') return HEROES[m.id as 'kai' | 'lyra'].skills.filter((s) => s.level <= m.level).map((s) => s.id);
-    return SPECIES[m.id].allySkills.filter((id) => SKILLS[id]);
+    if (m.kind === 'hero') {
+      const own = HEROES[m.id as 'kai' | 'lyra'].skills.filter((s) => s.level <= m.level).map((s) => s.id);
+      return [...own, ...this.artsOf(m)];
+    }
+    const sp = SPECIES[m.id];
+    const late = sp.lateSkill && m.level >= sp.lateSkill.level ? [sp.lateSkill.id] : [];
+    return [...sp.allySkills, ...late, ...(m.inherited ?? [])].filter((id, i, a) => SKILLS[id] && a.indexOf(id) === i);
+  }
+
+  /** Arts unlocked by the hero's board lines. */
+  artsOf(m: Member): string[] {
+    if (m.kind !== 'hero') return [];
+    return artsFor(BOARDS[m.id as 'kai' | 'lyra'], this.boards[m.id] ?? []).map((a) => a.skill.id);
+  }
+
+  partEffects(m: Member): Set<PartEffect> {
+    const out = new Set<PartEffect>();
+    if (m.kind === 'hero') for (const id of this.boards[m.id] ?? []) { const e = id ? PARTS[id]?.effect : undefined; if (e) out.add(e); }
+    return out;
+  }
+
+  /** Copies of a part not slotted on any board. */
+  partsFree(id: string) {
+    let used = 0;
+    for (const b of Object.values(this.boards)) used += b.filter((x) => x === id).length;
+    return (this.parts[id] ?? 0) - used;
+  }
+
+  addCrystals(c: Partial<Record<Element, number>>) {
+    for (const [e, n] of Object.entries(c)) this.crystals[e as Element] += n ?? 0;
+  }
+  hasCrystals(c: Partial<Record<Element, number>>) {
+    return Object.entries(c).every(([e, n]) => this.crystals[e as Element] >= (n ?? 0));
+  }
+  spendCrystals(c: Partial<Record<Element, number>>) {
+    if (!this.hasCrystals(c)) return false;
+    for (const [e, n] of Object.entries(c)) this.crystals[e as Element] -= n ?? 0;
+    return true;
   }
 
   activeMembers() {
@@ -145,6 +196,30 @@ export class GameState {
       else target[k] = v;
     }
     return st;
+  }
+
+  /** 공방 inheritance: the material leaves, the base learns one of its skills (oldest forgotten past the cap). */
+  inherit(baseId: string, matId: string, skill: string) {
+    const base = this.member(baseId);
+    base.inherited = [...(base.inherited ?? []).filter((s) => s !== skill), skill].slice(-MAX_INHERITED);
+    const mat = this.member(matId);
+    this.giveXp(base, Math.round(xpToNext(base.level) * 0.3 + mat.level * 4));
+    this.removeMember(matId);
+  }
+
+  /** 공방 fusion: both leave, a new species joins at their average level (+1). */
+  fuse(aId: string, bId: string, result: string) {
+    const lv = Math.round((this.member(aId).level + this.member(bId).level) / 2) + 1;
+    this.removeMember(aId);
+    this.removeMember(bId);
+    this.bestiary[result].seen = true;
+    if (this.roster.some((m) => m.id === result)) { this.recruit(result, lv); return this.member(result); }
+    return this.recruit(result, lv).member;
+  }
+
+  private removeMember(id: string) {
+    this.roster = this.roster.filter((m) => m.id !== id);
+    this.active = this.active.filter((x) => x !== id);
   }
 
   addItem(id: string, n = 1) {
