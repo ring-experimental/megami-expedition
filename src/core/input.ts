@@ -276,5 +276,7 @@ export const K = {
   right: ['KeyD', 'ArrowRight', 'PadRight', 'PadLSRight'],
   parry: ['KeyF', 'Mouse0', 'PadA', 'PadRB'],
   dodge: ['Space', 'Mouse2', 'PadB'],
+  /** only some enemy moves (ground shockwaves) — they can't be parried or dodged */
+  jump: ['KeyW', 'ArrowUp', 'PadY'],
   qte: ['KeyF', 'Space', 'Mouse0', 'PadA', 'PadB', 'PadRB'],
 };

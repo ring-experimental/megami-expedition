@@ -8,7 +8,7 @@ export const ELEMENT_COLOR: Record<Element, number> = {
 
 export interface Stats { hp: number; atk: number; mag: number; def: number; res: number; spd: number; }
 
-export type StatusId = 'atkUp' | 'defUp' | 'haste' | 'burn' | 'guard' | 'atkDown' | 'enraged';
+export type StatusId = 'atkUp' | 'defUp' | 'haste' | 'burn' | 'guard' | 'atkDown' | 'enraged' | 'overheat';
 export const STATUS_INFO: Record<StatusId, { name: string; icon: string; good: boolean }> = {
   atkUp: { name: '공격↑', icon: '⚔', good: true },
   defUp: { name: '방어↑', icon: '🛡', good: true },
@@ -17,6 +17,7 @@ export const STATUS_INFO: Record<StatusId, { name: string; icon: string; good: b
   burn: { name: '화상', icon: '🔥', good: false },
   atkDown: { name: '공격↓', icon: '↓', good: false },
   enraged: { name: '격노', icon: '💢', good: false },
+  overheat: { name: '과열', icon: '♨', good: true },
 };
 
 export type Difficulty = 'story' | 'normal' | 'hard';

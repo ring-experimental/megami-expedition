@@ -139,9 +139,9 @@ export class BattleUI {
       ? `${pb('dpad')} 선택 · ${pb('a')} 결정<span class="cancel"> · ${pb('b')} 취소</span>`
       : '<kbd>W</kbd><kbd>S</kbd> 선택 · <kbd>Enter</kbd> 결정<span class="cancel"> · <kbd>Esc</kbd> 취소</span>');
     this.defHint = bindInput(el('div', 'def-hint', '', this.root), (s) => s.device === 'pad'
-      ? `<span>${pb('a')}/${pb('rb')} 패링</span><span>${pb('b')} 회피</span>`
-      : '<span><kbd>F</kbd>/<kbd>좌클릭</kbd> 패링</span><span><kbd>Space</kbd>/<kbd>우클릭</kbd> 회피</span>');
-    this.speedEl = bindInput(el('div', 'battle-speed', '', this.root), (s) => `<b>${this.speed > 1 ? '▶▶' : '▶'} ×${this.speed}</b><span>${s.device === 'pad' ? pb('y') : '<kbd>Tab</kbd>'} 배속</span>`);
+      ? `<span class="dh-n">${pb('a')}/${pb('rb')} 패링</span><span class="dh-n">${pb('b')} 회피</span><span class="dh-j">${pb('y')} 점프!</span>`
+      : '<span class="dh-n"><kbd>F</kbd>/<kbd>좌클릭</kbd> 패링</span><span class="dh-n"><kbd>Space</kbd>/<kbd>우클릭</kbd> 회피</span><span class="dh-j"><kbd>W</kbd> 점프!</span>');
+    this.speedEl = bindInput(el('div', 'battle-speed', '', this.root), (s) => `<b>${this.speed > 1 ? '▶▶' : '▶'} ×${this.speed}</b><span>${s.device === 'pad' ? pb('back') : '<kbd>Tab</kbd>'} 배속</span>`);
     this.arrow = el('div', 'target-arrow', img(artSrc('ui/target_blade'), BLADE_SVG), ui.layer);
     // textures used from CSS (ink blots behind moment words, ink grain on panels)
     for (const [file, cls] of [['ui/ink_splat', 'art-ink-splat'], ['ui/ink_texture', 'art-ink-tex']]) {
@@ -206,10 +206,12 @@ export class BattleUI {
         const hpw = el('div', 'bar hp', undefined, info);
         const hp = el('div', 'fill', undefined, hpw);
         const ap = el('div', 'ap-pips', '', info);
+        // character mechanics: Kai's 열압 gauge, Lyra's 회로 각인 slots
+        const mech = el('div', `pc-mech${u.hero?.id === 'kai' ? ' heat' : u.hero?.id === 'lyra' ? ' sigil' : ''}`, '', info);
         const st = el('div', 'statuses', '', card);
         card.addEventListener('click', () => this.clickTarget(u));
         card.addEventListener('mouseenter', () => this.hoverTarget(u));
-        u.ui = { plate: card, hp, hpt, ap, st };
+        u.ui = { plate: card, hp, hpt, ap, st, mech };
       }
     }
   }
@@ -220,11 +222,18 @@ export class BattleUI {
     this.partyPanel.classList.toggle('has-active', !!u && u.side === 'party');
   }
 
-  setOrder(list: BUnit[]) {
+  /** `bonuses[i]`: the slot bonus chip i lands on; `preview`: the order as the hovered action would leave it. */
+  setOrder(list: BUnit[], bonuses: (string | null)[] = [], preview = false) {
     this.order.innerHTML = '';
-    el('div', 'to-label', 'Turn', this.order);
+    this.order.classList.toggle('preview', preview);
+    el('div', 'to-label', preview ? 'Next' : 'Turn', this.order);
+    const BONUS: Record<string, string> = { heal: 'HP', ap: 'AP', crit: 'CRT', brk: 'BRK' };
     list.forEach((u, i) => {
-      const c = el('div', `to-chip ${u.side}${i === 0 ? ' now' : ''}${u.broken ? ' broken' : ''}`, `<div class="chip-in">${portraitInner(u.pid, u.name)}</div>`, this.order);
+      const b = bonuses[i];
+      // the chip is clipped to its slanted shape, so the bonus tag sits beside it in a slot wrapper
+      const slot = el('div', `to-slot ${u.side}`, b ? `<span class="to-bonus b-${b}">${BONUS[b]}</span>` : '', this.order);
+      const c = el('div', `to-chip ${u.side}${i === 0 ? ' now' : ''}${u.broken ? ' broken' : ''}`, `<div class="chip-in">${portraitInner(u.pid, u.name)}</div>`);
+      slot.prepend(c);
       c.style.setProperty('--c', u.color);
       c.title = u.name;
     });
@@ -248,6 +257,12 @@ export class BattleUI {
         ui.plate.style.display = u.removed || u.ko ? 'none' : '';
       } else {
         ui.ap.innerHTML = Array.from({ length: 9 }, (_, i) => `<i class="${i < u.ap ? 'on' : ''}"></i>`).join('');
+        if (u.hero?.id === 'kai') {
+          const over = u.has('overheat');
+          ui.mech.innerHTML = `<span class="mh-l">${over ? '과열' : '열압'}</span><span class="mh-bar${over ? ' over' : ''}"><i style="width:${over ? 100 : u.heat}%"></i></span>`;
+        } else if (u.hero?.id === 'lyra') {
+          ui.mech.innerHTML = `<span class="mh-l">각인</span>${[0, 1].map((i) => (u.sigils[i] ? `<span class="sg">${icon('el', u.sigils[i], ELEMENT_NAME[u.sigils[i]])}</span>` : '<span class="sg empty"></span>')).join('')}`;
+        }
       }
     }
   }
@@ -491,7 +506,7 @@ export class BattleUI {
   // -------------------------------------------------------------------------
   // Timing rings (parry / QTE)
   // -------------------------------------------------------------------------
-  ring(anchor: () => THREE.Vector3, tEnd: number, lead: number, kind: 'parry' | 'qte') {
+  ring(anchor: () => THREE.Vector3, tEnd: number, lead: number, kind: 'parry' | 'qte' | 'jump') {
     const e = el('div', `timing-ring ${kind}`, '<div class="outer"></div><div class="inner"></div>', this.ringLayer);
     if (kind === 'qte') bindInput(el('div', 'key', '', e), (s) => (s.device === 'pad' ? pb('a') : 'F'));
     const r: Ring = { el: e, anchor, tEnd, lead, kind, done: false };
@@ -515,8 +530,9 @@ export class BattleUI {
     this.speedEl.classList.toggle('fast', k > 1);
   }
 
-  showDefHint(v: boolean) {
+  showDefHint(v: boolean, jump = false) {
     this.defHint.style.display = v ? '' : 'none';
+    this.defHint.classList.toggle('jump', jump);
   }
 
   // -------------------------------------------------------------------------

@@ -401,3 +401,29 @@
 .battle-result .battle-speed, .battle-talk .battle-speed { display: none; }
 .rs-row b.bonus { color: var(--gold-hi); }
 .rs-row small { margin-left: 8px; font: 400 12px var(--f-body); color: var(--bone-dim); }
+
+/* turn-order slot bonuses (machine language: a small brass tag under the chip) */
+.to-slot { position: relative; flex: none; display: flex; }
+.to-bonus { position: absolute; z-index: 1; left: 50%; bottom: -13px; transform: translateX(-50%) skewX(-14deg); padding: 0 5px; font: 800 9px/14px var(--f-num); letter-spacing: 0.04em; color: var(--ink-0); background: var(--gold-hi); white-space: nowrap; }
+.to-slot.enemy .to-bonus { background: var(--crimson); color: var(--bone); }
+.turn-order.preview .to-label { color: var(--gold-hi); }
+.turn-order.preview::after { background: linear-gradient(90deg, transparent, var(--gold-hi), transparent); height: 3px; }
+/* jump-only enemy moves: the parry/dodge hints give way to the jump key */
+.def-hint .dh-j { display: none; color: var(--gold-hi); }
+.def-hint.jump .dh-n { display: none; }
+.def-hint.jump .dh-j { display: inline; }
+.move-name .jump-tag { margin-left: 6px; padding: 0 6px; font: 800 12px var(--f-num); color: var(--ink-0); background: var(--gold-hi); }
+.timing-ring.jump .outer { border-color: var(--gold-hi); border-style: dashed; }
+/* party card mechanics */
+.pc-mech { white-space: nowrap; display: flex; align-items: center; gap: 4px; height: 14px; margin-top: 3px; font: 700 10px var(--f-cmd); color: var(--bone-dim); }
+.pc-mech:empty { display: none; }
+.mh-bar { position: relative; flex: 1; height: 5px; background: rgba(0, 0, 0, 0.6); outline: 1px solid var(--gold-dk); transform: skewX(-20deg); overflow: hidden; }
+.mh-bar i { position: absolute; inset: 0 auto 0 0; background: var(--gold); transition: width 0.25s; }
+.mh-bar.over i { background: var(--crimson); animation: overPulse 0.6s infinite alternate; }
+@keyframes overPulse { to { opacity: 0.55; } }
+.pc-mech .mh-l { flex: none; }
+.pc-mech .sg { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--gold-dk); background: var(--ink-1); transform: rotate(45deg); }
+.pc-mech .sg > * { transform: rotate(-45deg); width: 12px; height: 12px; font-size: 9px; }
+.pc-mech .sg.empty { opacity: 0.5; }
+.popup.bonus { font: 800 18px var(--f-num); color: var(--gold-hi); letter-spacing: 0.05em; text-shadow: 2px 2px 0 #000; }
+.popup.bonus.enemy { color: var(--crimson); }

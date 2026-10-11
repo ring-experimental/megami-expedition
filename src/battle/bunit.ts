@@ -5,7 +5,7 @@ import { getModel } from '../core/assets';
 import type { Member } from '../game/state';
 import { State } from '../game/state';
 import { HEROES, SPECIES, type HeroDef, type SpeciesDef } from '../data/units';
-import type { Stats, StatusId } from '../data/types';
+import type { Element, Stats, StatusId } from '../data/types';
 
 let uidSeq = 0;
 
@@ -42,6 +42,12 @@ export class BUnit {
   color: string;
   flashT = 0;
   ui: Record<string, HTMLElement> = {};
+  /** Kai's 열압 (0–100): skills build it, parries vent it, 100 → 과열. */
+  heat = 0;
+  /** Lyra's 회로 각인: elements of her last offensive spells (max 2, oldest first). */
+  sigils: Element[] = [];
+  /** Turn-order bonus picked up this turn (applies to the action taken in it). */
+  bonus: 'crit' | 'brk' | null = null;
   /** Steam from a `steam_point` node (Kai's backpack, the golem's chimney); emitted by Battle. */
   steam: SteamVent | null = null;
 
@@ -110,7 +116,7 @@ export class BUnit {
     return this.stats.spd * (this.has('haste') ? 1.5 : 1);
   }
   atkMult() {
-    return (this.has('atkUp') ? 1.3 : 1) * (this.has('atkDown') ? 0.75 : 1) * (this.has('enraged') ? 1.3 : 1);
+    return (this.has('atkUp') ? 1.3 : 1) * (this.has('atkDown') ? 0.75 : 1) * (this.has('enraged') ? 1.3 : 1) * (this.has('overheat') ? 1.35 : 1);
   }
   defMult() {
     return (this.has('defUp') ? 0.7 : 1) * (this.has('guard') ? 0.8 : 1);

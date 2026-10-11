@@ -476,7 +476,7 @@ export class Menus {
       () => { const d = DIFFICULTY[st.difficulty]; return `${d.desc} · 패링 ±${Math.round(d.parry * 1000)}ms · 회피 ±${Math.round(d.dodge * 1000)}ms · 받는 피해 ×${d.enemyDmg}`; }).dataset.padFirst = '';
     row('패링 타이밍 링', () => toggle(st.showParryRing), () => { st.showParryRing = !st.showParryRing; }, () => '하드에서는 항상 숨김');
     row('전투 배속', () => `<b>×${st.battleSpeed}</b>`, (d) => { st.battleSpeed = BATTLE_SPEEDS[(BATTLE_SPEEDS.indexOf(st.battleSpeed) + d + BATTLE_SPEEDS.length) % BATTLE_SPEEDS.length]; },
-      () => '연출만 빨라집니다. 패링 · 회피 · QTE 판정은 항상 ×1 (전투 중 Tab / Y로도 전환)');
+      () => '연출만 빨라집니다. 패링 · 회피 · QTE 판정은 항상 ×1 (전투 중 Tab / View 버튼으로도 전환)');
     sec('소리 · 조작');
     row('효과음 볼륨', () => gauge(Sfx.volume, 0, 1, `${Math.round(Sfx.volume * 100)}%`), (d) => Sfx.setVolume(num(Sfx.volume, d, 0, 1, 0.1)));
     row('마우스 감도', () => gauge(st.mouseSens, 0.3, 2.5, `×${st.mouseSens.toFixed(1)}`), (d) => { st.mouseSens = num(st.mouseSens, d, 0.3, 2.5, 0.1); });

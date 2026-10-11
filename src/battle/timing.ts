@@ -2,7 +2,7 @@ import { Input, K } from '../core/input';
 import type { Timeline } from '../core/timeline';
 import { DIFFICULTY, type Difficulty } from '../data/types';
 
-export type DefenseResult = 'parry' | 'dodge' | 'hit';
+export type DefenseResult = 'parry' | 'dodge' | 'jump' | 'hit';
 
 /**
  * Prototype tuning for multi-hit enemy moves: the authored gaps (as short as 0.14 s) left no time
@@ -28,10 +28,11 @@ export class DefenseSession {
   private hits: { t: number; result: DefenseResult | null; cb: (r: DefenseResult) => void }[] = [];
   private lockUntil = -1;
   private off: () => void;
-  onWhiff: ((kind: 'parry' | 'dodge') => void) | null = null;
+  onWhiff: ((kind: 'parry' | 'dodge' | 'jump') => void) | null = null;
   private late = 0.1;
 
-  constructor(private tl: Timeline, private diff: Difficulty) {
+  /** `jump`: a ground shockwave — only the jump key (dodge-sized window) avoids it; parry/dodge whiff. */
+  constructor(private tl: Timeline, private diff: Difficulty, private jumpOnly = false) {
     this.off = Input.listen((code, ms) => this.onKey(code, ms)) as unknown as () => void;
   }
 
@@ -40,13 +41,15 @@ export class DefenseSession {
   }
 
   private onKey(code: string, ms: number) {
-    const kind = K.parry.includes(code) ? 'parry' : K.dodge.includes(code) ? 'dodge' : null;
+    const kind = K.parry.includes(code) ? 'parry' : K.dodge.includes(code) ? 'dodge' : K.jump.includes(code) ? 'jump' : null;
     if (!kind) return;
     const t = this.tl.at(ms);
     if (t < this.lockUntil) return;
     const d = DIFFICULTY[this.diff];
     const w = kind === 'parry' ? d.parry : d.dodge;
-    const h = this.hits.find((x) => !x.result && t >= x.t - w && t <= x.t + Math.min(w * 0.6, this.late));
+    // the wrong defense for this move never matches a hit (it whiffs, with the usual lockout)
+    const fits = this.jumpOnly ? kind === 'jump' : kind !== 'jump';
+    const h = fits ? this.hits.find((x) => !x.result && t >= x.t - w && t <= x.t + Math.min(w * 0.6, this.late)) : undefined;
     if (h) {
       h.result = kind;
       h.cb(kind);
@@ -54,6 +57,7 @@ export class DefenseSession {
     } else {
       // only penalize presses reasonably close to an upcoming hit
       this.lockUntil = t + (kind === 'parry' ? 0.38 : 0.3);
+      if (kind === 'jump' && !this.jumpOnly) return; // W is also menu-up: a stray press isn't a whiff animation
       this.onWhiff?.(kind);
     }
   }

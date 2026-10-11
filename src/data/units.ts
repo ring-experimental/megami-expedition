@@ -21,14 +21,14 @@ export const HEROES: Record<'kai' | 'lyra', HeroDef> = {
     id: 'kai', name: '카이', title: '증기검사', model: 'kai', color: '#e2a64a',
     base: { hp: 120, atk: 18, mag: 8, def: 10, res: 8, spd: 11 },
     growth: { hp: 14, atk: 3, mag: 1, def: 2, res: 1.5, spd: 0.6 },
-    skills: [{ id: 'steam_slash', level: 1 }, { id: 'piston_thrust', level: 1 }, { id: 'overheat_storm', level: 5 }],
+    skills: [{ id: 'steam_slash', level: 1 }, { id: 'piston_thrust', level: 1 }, { id: 'vent_slash', level: 1 }, { id: 'overheat_storm', level: 5 }],
     basicElement: 'phys', basicMelee: true,
   },
   lyra: {
     id: 'lyra', name: '리라', title: '에테르 마도사', model: 'lyra', color: '#b77bff',
     base: { hp: 90, atk: 9, mag: 20, def: 7, res: 13, spd: 13 },
     growth: { hp: 10, atk: 1, mag: 3.2, def: 1.2, res: 2.2, spd: 0.7 },
-    skills: [{ id: 'aether_bolt', level: 1 }, { id: 'resonance_heal', level: 1 }, { id: 'frost_gear', level: 1 }, { id: 'volt_circuit', level: 4 }],
+    skills: [{ id: 'aether_bolt', level: 1 }, { id: 'resonance_heal', level: 1 }, { id: 'frost_gear', level: 1 }, { id: 'volt_circuit', level: 4 }, { id: 'circuit_fuse', level: 4 }],
     basicElement: 'aether', basicMelee: false,
   },
 };
@@ -50,6 +50,8 @@ export interface EnemyMove {
   windup: [number, number];
   allTargets?: boolean;
   weight: number;
+  /** Ground shockwave: only a jump avoids it (parry / dodge don't). */
+  jump?: boolean;
   status?: { id: StatusId; turns: number; chance: number; self?: boolean };
   /** self-heal ratio for 'self' moves */
   heal?: number;
@@ -151,7 +153,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
     moves: [
       { id: 'halberd_drop', name: '할버드 내려찍기', kind: 'melee', element: 'phys', stat: 'atk', power: 1.5, hits: [0], windup: [1.0, 1.8], weight: 3 },
       { id: 'triple_thrust', name: '삼단 찌르기', kind: 'melee', element: 'phys', stat: 'atk', power: 0.6, hits: [0, 0.3, 0.66], windup: [0.6, 0.9], weight: 3 },
-      { id: 'whirlwind', name: '회전 베기', kind: 'melee', element: 'phys', stat: 'atk', power: 0.7, hits: [0, 0.5], windup: [0.9, 1.2], allTargets: true, weight: 2 },
+      { id: 'whirlwind', name: '발목 베기', kind: 'melee', element: 'phys', stat: 'atk', power: 0.7, hits: [0, 0.5], windup: [0.9, 1.2], allTargets: true, weight: 2, jump: true },
       { id: 'rewind', name: '태엽 되감기', kind: 'self', element: 'phys', stat: 'atk', power: 0, hits: [], windup: [0.5, 0.5], weight: 1, heal: 0.2 },
     ],
     allySkills: ['whirl_slash', 'knights_oath'], xp: 80, money: 60, drops: [{ item: 'heart', chance: 0.4 }, { item: 'hi_tonic', chance: 0.4 }],
@@ -166,6 +168,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
     moves: [
       { id: 'furnace_punch', name: '용광로 펀치', kind: 'melee', element: 'fire', stat: 'atk', power: 1.7, hits: [0], windup: [1.2, 2.0], weight: 3 },
       { id: 'double_hammer', name: '양손 해머', kind: 'melee', element: 'phys', stat: 'atk', power: 0.95, hits: [0, 0.72], windup: [0.9, 1.2], weight: 3 },
+      { id: 'ground_slam', name: '지면 강타', kind: 'melee', element: 'phys', stat: 'atk', power: 1.25, hits: [0], windup: [1.1, 1.6], allTargets: true, weight: 2, jump: true },
       { id: 'steam_burst', name: '증기 대폭발', kind: 'ranged', element: 'fire', stat: 'mag', power: 0.6, hits: [0, 0.25, 0.5], windup: [1.2, 1.4], allTargets: true, weight: 2, status: { id: 'burn', turns: 2, chance: 0.3 } },
       { id: 'stoke', name: '화력 증강', kind: 'self', element: 'fire', stat: 'atk', power: 0, hits: [], windup: [0.5, 0.5], weight: 1, status: { id: 'atkUp', turns: 3, chance: 1, self: true } },
     ],

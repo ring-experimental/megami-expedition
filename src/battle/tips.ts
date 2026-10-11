@@ -5,7 +5,7 @@ import { pb } from '../ui/glyph';
  * Contextual battle tips (UI bible §9-5): each concept is explained once, the first time it comes
  * up, as one or two lines with the actual buttons for the current input device.
  */
-export type TipId = 'ap' | 'qte' | 'parry' | 'break' | 'talk';
+export type TipId = 'ap' | 'qte' | 'parry' | 'break' | 'talk' | 'jump' | 'heat' | 'circuit' | 'bonus';
 
 export interface Tip { title: string; body: (s: InputState) => string }
 
@@ -28,6 +28,22 @@ export const TIPS: Record<TipId, Tip> = {
   break: {
     title: 'Break',
     body: () => '노란 게이지가 가득 찬 적은 <b>1턴 기절</b>하고 받는 피해가 <b>1.5배</b>.',
+  },
+  jump: {
+    title: 'Jump',
+    body: (s) => `<b>JUMP</b> 표시가 붙은 공격은 땅을 타고 오는 충격파 — 패링·회피로는 못 막는다. 명중 순간 ${k(s, pb('y'), '<kbd>W</kbd>')} <b>점프</b>. 전부 넘으면 반격.`,
+  },
+  heat: {
+    title: '열압',
+    body: () => '카이의 기술은 보일러에 <b>열압</b>을 쌓는다. 100%가 되면 <b>과열</b>(공격 ×1.35, 매 턴 HP 소모). 패링하면 열이 빠지고, <b>방열 일섬</b>은 쌓인 열을 한 번에 쏟아낸다.',
+  },
+  circuit: {
+    title: '회로 각인',
+    body: () => '리라가 속성 마법을 쓰면 그 속성의 <b>각인</b>이 남는다(최대 2개). 서로 다른 각인 2개로 <b>회로 결합</b> — 조합마다 다른 상위 마법이 나온다.',
+  },
+  bonus: {
+    title: 'Turn Bonus',
+    body: () => '턴 순서의 일부 칸에는 <b>보너스</b>가 붙어 있다(HP 회복 · AP · 크리티컬 · 브레이크). 그 칸에 차례가 온 쪽이 받는다 — 적도 받는다. 무거운 기술은 다음 턴이 늦어지고, <b>지연</b> 기술은 적의 턴을 민다. 고르는 동안 바뀌는 순서가 미리 보인다.',
   },
   talk: {
     title: 'Talk',
