@@ -23,7 +23,7 @@ const KB_GRID = `
       <p><kbd>WASD</kbd> 이동 · <kbd>Shift</kbd> 달리기</p>
       <p><kbd>마우스</kbd> 시점 (화면 클릭으로 고정) · <kbd>휠</kbd> 줌</p>
       <p><kbd>좌클릭</kbd>/<kbd>J</kbd> 약공격 3연타 · <kbd>우클릭</kbd>/<kbd>K</kbd> 강공격</p>
-      <p><kbd>Space</kbd> 회피 · <kbd>E</kbd> 전투 개시/조사 · <kbd>Esc</kbd> 메뉴 · <kbd>H</kbd> 도움말</p>
+      <p><kbd>Space</kbd> 회피 · <kbd>E</kbd> 전투 개시/조사 · <kbd>Esc</kbd> 메뉴 · <kbd>H</kbd> 버튼 안내 숨기기</p>
       ${fieldTips('<kbd>E</kbd>')}
     </div>
     <div><h3>턴제 전투</h3>
@@ -40,7 +40,7 @@ const PAD_GRID = `
       <p>${pb('ls')} 이동 (기울기만큼 속도) · ${pb('lb')} 누르고 있기 / ${pb('l3')} 달리기</p>
       <p>${pb('rs')} 시점 · ${pb('r3')} 시점 정면으로 · ${pb('dud')} 줌</p>
       <p>${pb('x')} 약공격 3연타 · ${pb('y')} 강공격 · ${pb('b')} 회피</p>
-      <p>${pb('a')} 전투 개시/조사 · ${pb('start')} 메뉴 · ${pb('back')} 도움말</p>
+      <p>${pb('a')} 전투 개시/조사 · ${pb('start')} 메뉴 · ${pb('back')} 버튼 안내 숨기기</p>
       ${fieldTips(pb('a'))}
     </div>
     <div><h3>턴제 전투 · 메뉴</h3>
@@ -61,18 +61,4 @@ export function controlsPage(s: InputState) {
   return `<div class="ctl-device"><b>${deviceLabel(s)}</b><span class="dim">${pad ? '키보드·마우스를 쓰면' : '게임패드 버튼을 누르면'} 그 장치의 조작법으로 바뀝니다</span></div>
     ${warn}${pad ? PAD_GRID : KB_GRID}
     ${pad ? '<p class="dim ctl-foot">진동 · 패드 시점 감도는 메뉴 → 설정.</p>' : ''}`;
-}
-
-/** Compact field HUD help (toggled with H / View). */
-export function fieldHelp(s: InputState) {
-  const pad = s.device === 'pad';
-  const keys = pad
-    ? `<div>${pb('ls')} 이동 · ${pb('lb')}/${pb('l3')} 달리기 · ${pb('rs')} 시점 · ${pb('r3')} 정면 · ${pb('dud')} 줌</div>
-       <div>${pb('x')} 약공격(3연타) · ${pb('y')} 강공격 · ${pb('b')} 회피</div>
-       <div>${pb('a')} 전투 개시/조사 · ${pb('start')} 메뉴 · ${pb('back')} 도움말 숨기기</div>`
-    : `<div><b>WASD</b> 이동 · <b>Shift</b> 달리기 · <b>마우스</b> 시점 (클릭 시 고정)</div>
-       <div><b>좌클릭/J</b> 약공격(3연타) · <b>우클릭/K</b> 강공격 · <b>Space</b> 회피</div>
-       <div><b>E</b> 전투 개시/조사 · <b>Esc</b> 메뉴 · <b>H</b> 도움말 숨기기</div>`;
-  return `<div class="fh-dev">${deviceLabel(s)}</div>${keys}
-    <div class="dim">적의 <span class="kw">브레이크 게이지</span>를 채워 기절시키고 ${pad ? pb('a') : '<b>E</b>'} → <span class="kw">선제 공격</span> 전투!<br/>적의 돌진에 닿으면 전투 시작 — 등 뒤를 맞으면 <span class="kw red">기습</span>당한다.</div>`;
 }

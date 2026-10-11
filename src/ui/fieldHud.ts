@@ -5,16 +5,56 @@ import type { UI } from './ui';
 import type { FieldMode } from '../field/field';
 import type { FieldEnemy } from '../field/fieldEnemy';
 import { CHESTS, REST_POINT, WORLD_RADIUS, ZONE_NAME } from '../data/world';
-import { HEROES } from '../data/units';
-import { Input } from '../core/input';
-import { fieldHelp } from './controlsHelp';
-import { pb } from './glyph';
+import { Input, type InputState } from '../core/input';
+import { portraitInner } from './art';
+import { pb, type PadButton } from './glyph';
+import './fieldHud.css';
+
+/**
+ * Action buttons, laid out like the pad's face buttons (UI bible §9-6). Keyboard players see the
+ * matching key/mouse button in the same slot; a slot lights up while its input is held.
+ */
+interface Action { slot: string; label: string; pad: PadButton; key: string; codes: string[] }
+const MOUSE = (side: 'l' | 'r') => `<kbd class="ms ${side}" title="${side === 'l' ? '좌클릭 / J' : '우클릭 / K'}"></kbd>`;
+const FACE: Action[] = [
+  { slot: 'y', label: '강공격', pad: 'y', key: MOUSE('r'), codes: ['Mouse2', 'KeyK', 'PadY'] },
+  { slot: 'x', label: '약공격', pad: 'x', key: MOUSE('l'), codes: ['Mouse0', 'KeyJ', 'PadX'] },
+  { slot: 'b', label: '회피', pad: 'b', key: '<kbd>Space</kbd>', codes: ['Space', 'PadB'] },
+  { slot: 'a', label: '조사', pad: 'a', key: '<kbd>E</kbd>', codes: ['KeyE', 'PadA'] },
+];
+const SHOULDER: Action[] = [
+  { slot: 'run', label: '달리기', pad: 'lb', key: '<kbd>Shift</kbd>', codes: ['ShiftLeft', 'ShiftRight', 'PadLB'] },
+  { slot: 'menu', label: '메뉴', pad: 'start', key: '<kbd>Esc</kbd>', codes: ['Escape', 'PadStart'] },
+  { slot: 'hide', label: '안내 숨기기', pad: 'back', key: '<kbd>H</kbd>', codes: [] },
+];
+
+/** Brass compass ring drawn over the minimap canvas (north-up map, so the ring is static). */
+function compassSvg() {
+  const c = 100;
+  const teeth = Array.from({ length: 40 }, (_, i) => {
+    const a = (i / 40) * Math.PI * 2;
+    const p = (r: number, da = 0) => `${(c + Math.cos(a + da) * r).toFixed(1)},${(c + Math.sin(a + da) * r).toFixed(1)}`;
+    return `<path d="M${p(93, -0.045)} L${p(99, -0.025)} L${p(99, 0.025)} L${p(93, 0.045)}Z"/>`;
+  }).join('');
+  const ticks = Array.from({ length: 72 }, (_, i) => {
+    const a = (i / 72) * Math.PI * 2;
+    const r2 = i % 18 === 0 ? 82 : i % 6 === 0 ? 86 : 88;
+    return `<line x1="${c + Math.cos(a) * 91}" y1="${c + Math.sin(a) * 91}" x2="${c + Math.cos(a) * r2}" y2="${c + Math.sin(a) * r2}"/>`;
+  }).join('');
+  return `<svg viewBox="0 0 200 200"><g fill="#b58a2c" stroke="#0b0907" stroke-width="1">${teeth}</g>`
+    + `<circle cx="100" cy="100" r="92" fill="none" stroke="#d4a83a" stroke-width="4"/><circle cx="100" cy="100" r="92" fill="none" stroke="#0b0907" stroke-width="1" />`
+    + `<g stroke="#0b0907" stroke-width="1.2">${ticks}</g>`
+    + `<path d="M100 2 L108 18 L100 14 L92 18Z" fill="#f2c94c" stroke="#0b0907" stroke-width="1.2"/>`
+    + `<g font-family="Cinzel, serif" font-weight="800" font-size="11" fill="#f2c94c" text-anchor="middle" stroke="#0b0907" stroke-width="2.5" paint-order="stroke">`
+    + `<text x="100" y="30">N</text><text x="174" y="104">E</text><text x="100" y="180">S</text><text x="26" y="104">W</text></g></svg>`;
+}
 
 export class FieldHud {
   root: HTMLElement;
   private party: HTMLElement;
   private prompt: HTMLElement;
-  private help: HTMLElement;
+  private actions: HTMLElement;
+  private slots = new Map<string, { el: HTMLElement; a: Action }>();
   private mapCanvas: HTMLCanvasElement;
   private map: CanvasRenderingContext2D;
   private alerts: { el: HTMLElement; e: FieldEnemy; t: number }[] = [];
@@ -31,10 +71,11 @@ export class FieldHud {
     this.mapCanvas = el('canvas', '', undefined, tr);
     this.mapCanvas.width = this.mapCanvas.height = 180;
     this.map = this.mapCanvas.getContext('2d')!;
+    el('div', 'fh-compass', compassSvg(), tr);
     this.prompt = el('div', 'fh-prompt', '', this.root);
-    this.help = el('div', 'fh-help', '', this.root);
+    this.actions = el('div', 'fh-actions', undefined, this.root);
     Input.subscribe((s) => {
-      this.help.innerHTML = fieldHelp(s);
+      this.renderActions(s);
       this.interactKey = s.device === 'pad' ? pb('a') : '<kbd>E</kbd>';
       this.renderPrompt();
     });
@@ -43,11 +84,34 @@ export class FieldHud {
 
   setVisible(v: boolean) {
     this.root.style.display = v ? '' : 'none';
-    if (!v) for (const e of this.field.enemies) if (e.ui) e.ui.root.style.display = 'none';
+    if (!v) {
+      for (const e of this.field.enemies) if (e.ui) e.ui.root.style.display = 'none';
+      // an alert raised right before a battle would otherwise sit unplaced at (0,0) all battle
+      for (const a of this.alerts) a.el.remove();
+      this.alerts = [];
+    }
   }
 
+  /** H / View: hide or show the action-button guide. */
   toggleHelp() {
-    this.help.classList.toggle('hidden');
+    this.actions.classList.toggle('hidden');
+  }
+
+  private renderActions(s: InputState) {
+    const pad = s.device === 'pad';
+    this.actions.innerHTML = '';
+    this.slots.clear();
+    const face = el('div', 'fa-face', undefined, this.actions);
+    for (const a of FACE) {
+      const e = el('div', `fa-btn fa-${a.slot}`, `<div class="fa-glyph">${pad ? pb(a.pad) : a.key}</div><div class="fa-label">${a.label}</div>`, face);
+      this.slots.set(a.slot, { el: e, a });
+    }
+    const sh = el('div', 'fa-sub', undefined, this.actions);
+    for (const a of SHOULDER) {
+      const e = el('div', `fa-chip fa-${a.slot}`, `${pad ? pb(a.pad) : a.key}<span>${a.label}</span>`, sh);
+      this.slots.set(a.slot, { el: e, a });
+    }
+    this.renderPrompt();
   }
 
   /** Interaction prompt text (without the key — that follows the input device). Cheap to call every frame. */
@@ -58,8 +122,16 @@ export class FieldHud {
   }
 
   private renderPrompt() {
-    this.prompt.innerHTML = this.promptText ? `${this.interactKey} ${this.promptText}` : '';
+    this.prompt.innerHTML = this.promptText ? `${this.interactKey}<span>${this.promptText}</span>` : '';
     this.prompt.style.display = this.promptText ? '' : 'none';
+    // the A slot names what it would do right now, and dims when there is nothing to do
+    const a = this.slots.get('a');
+    if (a) {
+      // the prompt is HTML with a dim aside; the slot only gets the plain action
+      const short = this.promptText.replace(/<span class="dim">[\s\S]*?<\/span>/g, '').replace(/<[^>]+>/g, '').trim();
+      (a.el.querySelector('.fa-label') as HTMLElement).textContent = short || '조사';
+      a.el.classList.toggle('idle', !this.promptText);
+    }
   }
 
   alert(e: FieldEnemy) {
@@ -81,15 +153,18 @@ export class FieldHud {
   }
 
   update(dt: number) {
-    // party
-    const html = State.current.activeMembers().map((m) => {
-      const st = State.current.stats(m);
-      const k = Math.max(0, m.hp / st.hp);
-      const title = m.kind === 'hero' ? HEROES[m.id as 'kai'].title : '동료';
-      return `<div class="pm"><div class="pm-name" style="color:${m.color}">${m.name} <span class="lv">Lv${m.level}</span> <span class="dim">${title}</span></div>
-        <div class="bar hp"><div class="fill" style="width:${k * 100}%"></div></div><div class="pm-hp">${Math.ceil(m.hp)} / ${st.hp}</div></div>`;
+    // party: slanted portrait cards, same grammar as the battle cards
+    const html = State.current.activeMembers().map((m, i) => {
+      const max = State.current.stats(m).hp;
+      const k = Math.max(0, m.hp / max);
+      return `<div class="fh-card${k <= 0.3 ? ' low' : ''}" style="--row:${i}"><div class="fc-por" style="--c:${m.color}">${portraitInner(m.id, m.name)}</div>
+        <div class="fc-info"><div class="fc-name">${m.name}<span class="lv">Lv${m.level}</span></div>
+        <div class="fc-row"><div class="bar hp"><div class="fill" style="width:${k * 100}%"></div></div><div class="fc-hp">${Math.ceil(m.hp)}<small>/${max}</small></div></div></div></div>`;
     }).join('');
     if (this.party.dataset.h !== html) { this.party.innerHTML = html; this.party.dataset.h = html; }
+
+    // action slots light up while held
+    for (const { el: e, a } of this.slots.values()) if (a.codes.length) e.classList.toggle('on', Input.isDown(...a.codes));
 
     // enemy plates
     const ppos = this.field.player.pos;
@@ -115,6 +190,7 @@ export class FieldHud {
     if (this.mapT <= 0) { this.mapT = 1 / 15; this.drawMap(); }
   }
 
+  /** Minimap inside the compass ring: ink ground, gold landmarks, crimson enemies (bible §3). */
   private drawMap() {
     const g = this.map;
     const S = 180, R = S / 2;
@@ -123,13 +199,13 @@ export class FieldHud {
     g.save();
     g.beginPath();
     g.arc(R, R, R - 2, 0, Math.PI * 2);
-    g.fillStyle = 'rgba(25,20,14,0.72)';
+    g.fillStyle = 'rgba(11,9,7,0.82)';
     g.fill();
     g.clip();
     const tx = (x: number) => R + x * sc;
     const tz = (z: number) => R + z * sc;
     // roads
-    g.strokeStyle = 'rgba(200,160,100,0.45)';
+    g.strokeStyle = 'rgba(107,84,32,0.9)';
     g.lineWidth = 3;
     g.beginPath();
     g.moveTo(tx(0), tz(70)); g.lineTo(tx(0), tz(-30));
@@ -137,37 +213,37 @@ export class FieldHud {
     g.moveTo(tx(0), tz(2)); g.lineTo(tx(32), tz(-8)); g.lineTo(tx(48), tz(-18));
     g.moveTo(tx(0), tz(-30)); g.lineTo(tx(36), tz(-44));
     g.stroke();
-    g.fillStyle = 'rgba(200,180,140,0.35)';
+    // plaza + clock tower
+    g.fillStyle = 'rgba(107,84,32,0.5)';
     g.beginPath(); g.arc(tx(0), tz(-40), 15 * sc, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#e8c27a';
+    g.fillStyle = '#f2c94c';
     g.fillRect(tx(0) - 3, tz(-52) - 3, 6, 6);
-    // rest
-    g.fillStyle = '#5ff3ff';
-    g.beginPath(); g.arc(tx(REST_POINT.x), tz(REST_POINT.z), 4, 0, Math.PI * 2); g.fill();
+    // rest spring: gold ring
+    g.strokeStyle = '#f2c94c';
+    g.lineWidth = 2;
+    g.beginPath(); g.arc(tx(REST_POINT.x), tz(REST_POINT.z), 4.5, 0, Math.PI * 2); g.stroke();
     // chests
+    g.fillStyle = '#d4a83a';
     for (const c of CHESTS) {
       if (State.current.openedChests.has(c.id)) continue;
-      g.fillStyle = '#ffd34a';
       g.fillRect(tx(c.x) - 2.5, tz(c.z) - 2.5, 5, 5);
     }
-    // enemies
+    // enemies: crimson, stunned ones gold, stronger tiers bigger with an outline
     for (const e of this.field.enemies) {
       if (!e.alive) continue;
-      g.fillStyle = e.stunned ? '#ffe066' : e.sp.tier === 'elite' ? '#ff4aa8' : e.sp.tier === 'strong' ? '#ff7a3a' : '#ff4a3a';
-      g.beginPath(); g.arc(tx(e.pos.x), tz(e.pos.z), e.sp.tier === 'weak' ? 2.6 : 3.6, 0, Math.PI * 2); g.fill();
+      const r = e.sp.tier === 'weak' ? 2.6 : e.sp.tier === 'strong' ? 3.6 : 4.4;
+      g.fillStyle = e.stunned ? '#f2c94c' : '#c8283a';
+      g.beginPath(); g.arc(tx(e.pos.x), tz(e.pos.z), r, 0, Math.PI * 2); g.fill();
+      if (e.sp.tier !== 'weak') { g.strokeStyle = '#efe6d2'; g.lineWidth = 1; g.stroke(); }
     }
     // player arrow
     const p = this.field.player;
     g.translate(tx(p.pos.x), tz(p.pos.z));
     g.rotate(-p.yaw + Math.PI);
-    g.fillStyle = '#ffffff';
-    g.beginPath(); g.moveTo(0, -6); g.lineTo(4.5, 5); g.lineTo(0, 2.5); g.lineTo(-4.5, 5); g.closePath(); g.fill();
+    g.fillStyle = '#efe6d2';
+    g.strokeStyle = '#0b0907';
+    g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(0, -7); g.lineTo(5, 5.5); g.lineTo(0, 3); g.lineTo(-5, 5.5); g.closePath(); g.fill(); g.stroke();
     g.restore();
-    g.strokeStyle = '#b08a4a';
-    g.lineWidth = 3;
-    g.beginPath(); g.arc(R, R, R - 2, 0, Math.PI * 2); g.stroke();
-    g.fillStyle = '#e8c27a';
-    g.font = 'bold 11px Cinzel, serif';
-    g.fillText('N', R - 4, 13);
   }
 }

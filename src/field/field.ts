@@ -347,8 +347,10 @@ export class FieldMode {
     if (!State.current.tutorialField) {
       State.current.tutorialField = true;
       setTimeout(() => this.game.ui.toast((s) => (s.device === 'pad'
-        ? `${pb('rs')}로 시점을 돌릴 수 있습니다. ${pb('back')}로 도움말 토글`
-        : '화면을 클릭하면 마우스로 시점을 조작할 수 있습니다. <b>H</b>로 도움말 토글'), '', 5000), 600);
+        ? `${pb('rs')}로 시점을 돌릴 수 있습니다. ${pb('back')}로 버튼 안내 숨기기`
+        : '화면을 클릭하면 마우스로 시점을 조작할 수 있습니다. <kbd>H</kbd>로 버튼 안내 숨기기'), '', 6000), 600);
+      // the core field rule, formerly in the always-on help box
+      setTimeout(() => this.game.ui.toast((s) => `적의 노란 <b>브레이크 게이지</b>를 채워 기절시키고 ${s.device === 'pad' ? pb('a') : '<kbd>E</kbd>'} → 선제 공격! 등 뒤를 맞으면 기습당한다.`, 'gold', 8000), 1400);
     }
   }
 
