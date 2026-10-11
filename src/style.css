@@ -164,7 +164,7 @@ body[data-pad='nintendo'] .pb-lb { --l: 'L'; } body[data-pad='nintendo'] .pb-rb 
 body[data-pad='nintendo'] .pb-lt { --l: 'ZL'; } body[data-pad='nintendo'] .pb-rt { --l: 'ZR'; }
 body[data-pad='nintendo'] .pb-start { --l: '+'; } body[data-pad='nintendo'] .pb-back { --l: '−'; }
 /* DOM menu focus (ui/padNav.ts) — only drawn while a pad is the active device */
-body.pad .pad-focus { outline: 2px solid var(--gold-hi); outline-offset: 3px; box-shadow: 0 0 18px rgba(242, 201, 76, 0.45); }
+body.navfocus .pad-focus { outline: 2px solid var(--gold-hi); outline-offset: 3px; box-shadow: 0 0 18px rgba(242, 201, 76, 0.45); }
 .ctl-device { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(201, 161, 74, 0.3); }
 .ctl-device b { color: var(--brass-hi); font-size: 15px; }
 .ctl-device .dim { font-size: 12px; }

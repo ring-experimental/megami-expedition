@@ -350,7 +350,8 @@ export class Game {
   private tick(dt: number, render: boolean) {
     Input.pollGamepads();
     if (this.mode === 'field' && !this.paused && Input.pressed('Escape', 'PadStart') && this.field.controlsEnabled) this.openPause();
-    else if (this.paused && Input.pressed('Escape', 'PadStart') && performance.now() - this.pauseOpenedAt > 350) this.closePause();
+    // Esc / Start back out of a menu sub-state (e.g. a party swap) before closing the menu
+    else if (this.paused && Input.pressed('Escape', 'PadStart') && performance.now() - this.pauseOpenedAt > 350) { if (!this.menus.back()) this.closePause(); }
     else if (this.mode === 'title' || this.paused) this.menus.padUpdate();
 
     let scene: THREE.Scene, camera: THREE.Camera;
