@@ -1,0 +1,68 @@
+/* Title — UI bible §9-8: large logo top-left over the live 3D field, slanted menu bottom-right,
+   brass gears turning behind the logo and the odd goddess feather drifting down. */
+.title-screen { position: absolute; inset: 0; z-index: 35; pointer-events: auto; overflow: hidden; font-family: var(--f-cmd); color: var(--bone); transition: opacity 0.5s;
+  background: radial-gradient(ellipse 70% 60% at 22% 22%, rgba(11, 9, 7, 0.55), transparent 70%), radial-gradient(ellipse 60% 50% at 90% 92%, rgba(11, 9, 7, 0.6), transparent 70%); }
+.title-screen.out { opacity: 0; }
+.title-screen > * { position: absolute; }
+
+/* gears: two brass wheels meshing slowly behind the logo (machine language, always on) */
+.ts-gears { left: 0; top: 0; width: 720px; height: 520px; pointer-events: none; opacity: 0.42; }
+.ts-gear { position: absolute; }
+.ts-gear svg { display: block; width: 100%; height: 100%; }
+.ts-gear.big { left: 210px; top: -60px; width: 470px; height: 470px; animation: spin 90s linear infinite; }
+.ts-gear.small { left: 70px; top: 300px; width: 240px; height: 240px; animation: spin 50s linear infinite reverse; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* feathers: one every few seconds, slow and sparse (title is the one exception to "rarely", bible §1) */
+.ts-feathers { inset: 0; pointer-events: none; }
+.ts-feather { position: absolute; top: -130px; left: calc(18% + var(--i) * 26%); width: 30px; height: 90px; opacity: 0; filter: drop-shadow(0 0 6px rgba(242, 201, 76, 0.55));
+  animation: tsFeather 12s ease-in-out infinite; animation-delay: calc(var(--i) * 4s + 1.5s); }
+.ts-feather svg, .ts-feather img { display: block; width: 100%; height: 100%; }
+@keyframes tsFeather { 0% { transform: translate(0, 0) rotate(-20deg); opacity: 0; } 8% { opacity: 0.9; }
+  35% { transform: translate(60px, 300px) rotate(22deg); } 65% { transform: translate(-30px, 560px) rotate(-16deg); opacity: 0.8; }
+  85%, 100% { transform: translate(40px, 860px) rotate(18deg); opacity: 0; } }
+
+/* logo */
+.ts-logo { left: 64px; top: 48px; width: 640px; transform: rotate(-4deg); transform-origin: left top; animation: logoIn 0.6s var(--ease-settle); }
+.logo-img { display: block; width: 100%; max-height: none; margin: 0; filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.7)); }
+.ts-logo h1 { margin: 0; font: 900 84px/0.95 var(--f-ink); color: var(--gold-hi); text-shadow: 4px 4px 0 #000; }
+.ts-sub { display: flex; align-items: baseline; gap: 14px; margin: 6px 0 0 40px; }
+.ts-sub span { position: relative; isolation: isolate; padding: 3px 22px 3px 12px; font: 800 18px var(--f-cmd); color: var(--ink-0); }
+.ts-sub span::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--gold-hi); transform: skewX(-14deg); }
+.ts-sub small { font: 900 14px var(--f-ink); color: var(--bone); text-shadow: 2px 2px 0 #000; letter-spacing: 0.08em; }
+@keyframes logoIn { from { opacity: 0; transform: rotate(-4deg) translateY(-30px) scale(0.96); } }
+
+/* menu, bottom-right: blades in a stair (shares .mn-btn with the pause menu) */
+.ts-menu { right: 6%; bottom: 13%; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.ts-menu > .mn-btn { width: 260px; animation: rowIn 0.25s var(--ease-pop) backwards; }
+.ts-menu > .mn-btn:nth-child(2) { margin-right: 16px; animation-delay: 50ms; }
+.ts-menu > .mn-btn.big { height: 56px; width: 300px; font-size: 24px; }
+.ts-menu > .mn-btn.small { width: 180px; margin-right: 30px; }
+.ts-menu .mn-btn::before { background: rgba(11, 9, 7, 0.88); }
+.ts-menu .mn-btn:hover::before, body.pad .ts-menu .mn-btn.pad-focus::before { background: var(--gold-hi); border-left-color: var(--ink-0); }
+.ts-menu .mn-btn:hover, body.pad .ts-menu .mn-btn.pad-focus { color: var(--ink-0); }
+body.pad .title-screen .pad-focus { outline: none; box-shadow: none; }
+.ts-menu.wide { left: 6%; align-items: flex-end; }
+
+/* difficulty: three slanted cards */
+.ts-q { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-bottom: 4px; }
+.ts-q span { position: relative; isolation: isolate; padding: 3px 22px 3px 14px; font: 900 20px var(--f-cmd); color: var(--ink-0); }
+.ts-q span::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--gold-hi); transform: skewX(-14deg); }
+.ts-q small { padding: 2px 12px; font: 400 13px var(--f-body); color: var(--bone); background: rgba(11, 9, 7, 0.8); }
+.ts-diffs { display: flex; gap: 18px; }
+.ts-diff { position: relative; isolation: isolate; width: 250px; min-height: 210px; padding: 22px 34px 18px; border: none; background: none; cursor: pointer; text-align: left; color: var(--bone);
+  transition: transform 0.16s var(--ease-pop); animation: cardIn 0.3s var(--ease-pop) backwards; animation-delay: calc(var(--i) * 60ms); }
+.ts-diff::before { content: ''; position: absolute; inset: 0; z-index: -1; background: rgba(11, 9, 7, 0.9); clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); box-shadow: inset 0 0 0 2px var(--gold-dk); }
+.ts-diff:hover, body.pad .ts-diff.pad-focus { transform: translateY(-14px) scale(1.04); color: var(--ink-0); }
+.ts-diff:hover::before, body.pad .ts-diff.pad-focus::before { background: var(--gold-hi); }
+.td-name { font: 900 26px var(--f-cmd); transform: rotate(-3deg); transform-origin: left; }
+.td-desc { min-height: 3.2em; margin: 8px 0 12px; font: 400 13px/1.55 var(--f-body); opacity: 0.85; word-break: keep-all; }
+.td-stat { display: flex; justify-content: space-between; font: 700 12px var(--f-cmd); opacity: 0.85; }
+.td-stat b { font: 800 14px var(--f-num); }
+
+/* controls page */
+.ts-help { position: relative; isolation: isolate; width: min(940px, 100%); max-height: 64vh; overflow-y: auto; scrollbar-width: none; padding: 22px 34px; text-align: left; animation: bodyIn 0.2s var(--ease-settle); }
+.ts-help::-webkit-scrollbar { display: none; }
+.ts-help { background: rgba(11, 9, 7, 0.92); clip-path: polygon(2% 0, 100% 0, 98% 100%, 0 100%); }
+
+.ts-foot { left: 64px; bottom: 22px; font: 400 12px var(--f-body); color: var(--bone-dim); text-shadow: 0 1px 3px #000; }
