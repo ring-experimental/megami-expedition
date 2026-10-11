@@ -62,7 +62,7 @@ export class Chapter1 {
     else if (!f('ch1_tick_recruited')) { text = '가스등 뒤에 숨은 톱니쥐와 이야기하기'; pos = { zone: 'plains', x: 13, z: 41 }; }
     else if (!f('ch1_hub_arrived')) {
       text = s.st.zone === 'pause_station' ? '집배대 지부의 마르타, 공방의 피페 만나기' : '남쪽 길로 쉼표 역에 가기';
-      pos = s.st.zone === 'pause_station' ? (f('met_marta') ? { zone: 'pause_station', x: -17, z: 12 } : { zone: 'pause_station', x: -15, z: -13 }) : { zone: 'plains', x: 0, z: 72 };
+      pos = s.st.zone === 'pause_station' ? (f('met_marta') ? { zone: 'pause_station', x: -17, z: 12 } : { zone: 'pause_station', x: -17.5, z: -11.5 }) : { zone: 'plains', x: 0, z: 72 };
     } else if (!f('ch1_crystal_got')) { text = '동쪽 결정 숲의 노래하는 결정'; pos = { zone: 'plains', x: 46, z: 6 }; }
     else if (!f('ch1_met_bail')) { text = '서쪽 잿빛 굴뚝 조사'; pos = s.st.zone === 'ashstack_works' ? { zone: 'ashstack_works', x: 0, z: -26 } : { zone: 'plains', x: -72, z: 0 }; }
     else if (!f('ch1_valve_got')) { text = '굴뚝 서쪽 차고의 밸브실'; pos = { zone: 'ashstack_works', x: -46, z: 0 }; }
@@ -70,7 +70,7 @@ export class Chapter1 {
     else if (!f('ch1_holdup_done')) { text = '공명 결정과 밸브를 들고 탑 앞으로'; pos = { zone: 'plains', x: 0, z: -36 }; }
     else if (!f('ch1_tower_open')) { text = '탑 정문 조사'; pos = { zone: 'plains', x: 0, z: -46 }; }
     else if (!f('ch1_boss_done')) { text = '시계탑 종루로'; pos = s.st.zone === 'clocktower_interior' ? { zone: 'clocktower_interior', x: 0, z: 5 } : { zone: 'plains', x: 0, z: -46 }; }
-    else if (!f('ch1_complete')) { text = '쉼표 역으로'; pos = { zone: 'pause_station', x: -15, z: -13 }; }
+    else if (!f('ch1_complete')) { text = '쉼표 역으로'; pos = { zone: 'pause_station', x: -17.5, z: -11.5 }; }
     else text = '제1장 클리어 — 못판의 의뢰와 남은 동료를 찾아보자';
     this.s.field?.hud.setGoal(text, pos);
     return text;

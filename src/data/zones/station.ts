@@ -24,7 +24,7 @@ export const STATION: ZoneDef = {
     hills: 0.35,
     edge: [60, 84],
     seed: 21,
-    palette: { grassA: '#7a8650', grassB: '#8a9658', grassC: '#6a7646', dirt: '#7d6a55', dirtB: '#6d5a45', stoneA: '#8e7a62', stoneB: '#7d6a55', cliff: '#7a6450', cliffB: '#5e4c3c', trim: '#c9a14a', grassTuft: '#7f9a4a' },
+    palette: { grassA: '#7a8650', grassB: '#8a9658', grassC: '#6a7646', dirt: '#7d6a55', dirtB: '#6d5a45', stoneA: '#8e7a62', stoneB: '#7d6a55', cliff: '#7a6450', cliffB: '#5e4c3c', trim: '#a8853a', grassTuft: '#7f9a4a' },
     grass: 0.45,
     paved: 26,
   },
@@ -68,7 +68,7 @@ export const STATION: ZoneDef = {
     { id: 'gate_station_north', x: 0, z: -67, r: 3, to: 'plains', toGate: 'gate_plain_south', label: '에테르 평원' },
   ],
   npcs: [
-    { id: 'marta', name: '마르타', x: -15, z: -13, rot: 0.6, model: 'npc_marta', color: '#2f4a3a' },
+    { id: 'marta', name: '마르타', x: -17.5, z: -11.5, rot: 0.6, model: 'npc_marta', color: '#2f4a3a' },
     { id: 'poppy', name: '포피', x: -5, z: 1, rot: 2.6, model: 'npc_poppy', color: '#c8283a', when: () => !night() },
     { id: 'poppy', name: '포피', x: -12, z: 26, rot: 0.2, model: 'npc_poppy', color: '#c8283a', when: night },
     { id: 'shopkeeper', name: '상점 주인', x: 20, z: -14.5, rot: 3.0, model: 'npc_shopkeeper', color: '#6a4a30' },

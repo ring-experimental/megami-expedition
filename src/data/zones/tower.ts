@@ -16,7 +16,7 @@ export const TOWER: ZoneDef = {
     hills: 0.05,
     edge: [70, 90],
     seed: 41,
-    palette: { grassA: '#4a4038', grassB: '#4a4038', grassC: '#4a4038', dirt: '#6b5420', dirtB: '#5a4618', stoneA: '#6b5420', stoneB: '#4a4038', cliff: '#4a4038', cliffB: '#3a322c', trim: '#c9a14a', grassTuft: '#4a4038' },
+    palette: { grassA: '#4a4038', grassB: '#4a4038', grassC: '#4a4038', dirt: '#5a4a34', dirtB: '#52432f', stoneA: '#5a4a36', stoneB: '#4f4232', cliff: '#4a4038', cliffB: '#3a322c', trim: '#9a7a34', grassTuft: '#4a4038' },
     grass: 0,
     rooms: [{ x: 0, z: 26, r: 24 }, { x: 0, z: -36, r: 20 }],
   },
@@ -24,7 +24,7 @@ export const TOWER: ZoneDef = {
   props: [
     { name: 'prop_drive_shaft', x: 0, z: 22, rot: 0, colliders: [{ x: 0, z: 0, r: 1.6 }] },
     { name: 'prop_gear_monument', x: -16, z: 40, rot: 0.4, colliders: [{ x: -2.3, z: 0, r: 1.65 }, { x: -0.8, z: 0, r: 1.6 }, { x: 0.8, z: 0, r: 1.6 }, { x: 2.3, z: 0, r: 1.65 }] },
-    { name: 'prop_gear_monument', x: 16, z: 8, rot: -0.8, colliders: [{ x: -2.3, z: 0, r: 1.65 }, { x: -0.8, z: 0, r: 1.6 }, { x: 0.8, z: 0, r: 1.6 }, { x: 2.3, z: 0, r: 1.65 }] },
+    { name: 'prop_gear_monument', x: 13, z: 13, rot: -0.8, colliders: [{ x: -2.3, z: 0, r: 1.65 }, { x: -0.8, z: 0, r: 1.6 }, { x: 0.8, z: 0, r: 1.6 }, { x: 2.3, z: 0, r: 1.65 }] },
     { name: 'prop_pipe', x: -21, z: 26, rot: Math.PI / 2, colliders: pipeCols },
     { name: 'prop_pipe', x: 21, z: 30, rot: Math.PI / 2, colliders: pipeCols },
     { name: 'prop_lamp', x: -10, z: 44, colliders: [{ x: 0, z: 0, r: 0.35 }], light: '#ffcf7a' },
@@ -41,7 +41,7 @@ export const TOWER: ZoneDef = {
   ],
   spawns: [
     { id: 't_s1', x: -12, z: 30, formation: ['knight', 'prism_moth'], wander: 3 },
-    { id: 't_s2', x: 12, z: 12, formation: ['beetle', 'wisp'], wander: 3 },
+    { id: 't_s2', x: 8, z: 16, formation: ['beetle', 'wisp'], wander: 3 },
   ],
   scatter: [],
   gates: [
