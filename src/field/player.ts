@@ -38,6 +38,8 @@ export class Player {
   private aimYaw: number | null = null;
   /** L3 sprint toggle — stays on until the stick is released */
   private padSprint = false;
+  /** This frame's movement input, camera-relative (−z = forward): read by the camera's auto-follow. */
+  moveInput = { x: 0, z: 0 };
 
   constructor(private field: FieldMode) {
     this.model = getModel('kai');
@@ -61,13 +63,16 @@ export class Player {
     // movement input relative to camera (keys are all-or-nothing, the left stick is analog)
     let ix = 0, iz = 0;
     if (controls) {
-      if (Input.isDown('KeyW', 'ArrowUp')) iz -= 1;
-      if (Input.isDown('KeyS', 'ArrowDown')) iz += 1;
-      if (Input.isDown('KeyA', 'ArrowLeft')) ix -= 1;
-      if (Input.isDown('KeyD', 'ArrowRight')) ix += 1;
+      // arrow keys turn the camera instead (FieldMode)
+      if (Input.isDown('KeyW')) iz -= 1;
+      if (Input.isDown('KeyS')) iz += 1;
+      if (Input.isDown('KeyA')) ix -= 1;
+      if (Input.isDown('KeyD')) ix += 1;
       if (!ix && !iz) { ix = Input.stick.lx; iz = Input.stick.ly; }
       if (Input.pressed('PadL3')) this.padSprint = !this.padSprint;
     }
+    this.moveInput.x = ix;
+    this.moveInput.z = iz;
     const move = new THREE.Vector3(ix, 0, iz);
     const amount = Math.min(1, move.length());
     if (amount === 0) this.padSprint = false;

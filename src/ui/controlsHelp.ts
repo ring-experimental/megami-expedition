@@ -21,7 +21,7 @@ const KB_GRID = `
   <div class="ctl-grid">
     <div><h3>필드</h3>
       <p><kbd>WASD</kbd> 이동 · <kbd>Shift</kbd> 달리기</p>
-      <p><kbd>마우스</kbd> 시점 (화면 클릭으로 고정) · <kbd>휠</kbd> 줌</p>
+      <p><kbd>마우스</kbd> 시점 (화면 클릭으로 고정) · <kbd>방향키</kbd> 시점 · <kbd>C</kbd> 시점 정면으로 · <kbd>휠</kbd> 줌</p>
       <p><kbd>좌클릭</kbd>/<kbd>J</kbd> 약공격 3연타 · <kbd>우클릭</kbd>/<kbd>K</kbd> 강공격</p>
       <p><kbd>Space</kbd> 회피 · <kbd>E</kbd> 전투 개시/조사 · <kbd>Esc</kbd> 메뉴 · <kbd>H</kbd> 버튼 안내 숨기기</p>
       ${fieldTips('<kbd>E</kbd>')}
