@@ -186,7 +186,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
   // --- chapter 1 (docs/story/CHAPTER1.md §5) ---------------------------------
   prism_moth: {
     id: 'prism_moth', name: '프리즘 나방', desc: '스테인드글라스 날개로 빛을 모으는 나방. 무엇이 빛을 굽히는지 늘 궁금해한다.',
-    battleScale: 1.3, model: 'prism_moth', archetype: 'wisp', scale: 1, tier: 'weak', level: 5,
+    battleScale: 1.7, model: 'prism_moth', archetype: 'wisp', scale: 1, tier: 'weak', level: 5,
     stats: { hp: 76, atk: 7, mag: 19, def: 6, res: 15, spd: 16 },
     affinity: { phys: 1.5, volt: 1.25, aether: 0.5 }, breakMax: 55, personality: 'curious',
     field: { speed: 3.8, detect: 12, attack: 'projectile', windup: 0.8, breakMax: 42, poise: 0 },
