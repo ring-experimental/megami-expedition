@@ -18,6 +18,14 @@
 | ★2 | `icons/st_*.png` | 7 | 아군 카드/적 HP바 아래 상태이상 | 약 15px |
 | ★3 | `portraits/system.png` | 1 | 협상 중 「시스템」 안내 말풍선 | 84px |
 | ★3 | `portraits/{몬스터}_happy.png`, `_angry.png` | 12 | 협상 중 반응 표정 (좋은 대답 → happy, 나쁜 대답/거절 → angry) | 84px |
+| ★1 | `portraits/cutin_kai.png`, `cutin_lyra.png` | 2 | 전투 컷인 (스킬 · COUNTER) — §7 | 사선 창 170×150px (1080p에서 255×225) |
+| ★1 | `ui/gear_ring.png` | 1 | 전투 커맨드 톱니 링 (회전함) — §7 | 152px 원 (1080p 228px) |
+| ★2 | `ui/ink_band.png` | 1 | 컷인 뒤를 가로지르는 잉크 붓 띠 — §7 | 화면 폭 × 150px |
+| ★2 | `ui/ink_splat.png` | 1 | PARRY · WEAK · BREAK 글자 뒤 잉크 얼룩 — §7 | 약 200×90px |
+| ★2 | `ui/target_blade.png` | 1 | 대상 선택 시 적 머리 위에 꽂히는 칼날 표식 — §7 | 26×54px |
+| ★3 | `ui/ink_texture.png` | 1 | 먹색 패널 전체의 잉크 결 (타일 반복) — §7 | 256px 타일 |
+| ★2 | `ui/feather.png` | 1 | 영입 성공 때 떨어지는 여신의 깃털 — §7 | 34×100px (여러 장이 회전하며 낙하) |
+| ★3 | `portraits/cutin_<몬스터>.png` | 6 | 영입한 몬스터가 스킬을 쓸 때 컷인 — §7 | 컷인과 같음 |
 
 > 확장자는 `.png` 권장 (`.webp`도 인식). 파일명은 표의 이름 그대로 저장하세요 (대소문자 무관).
 
@@ -314,7 +322,82 @@ Edit the attached portrait: keep the exact same character design, colors, framin
 
 ---
 
-## 7. 후처리 & 적용 체크리스트
+## 7. 전투 UI 에셋 (UI 바이블 기반) — `ui/*`, `portraits/cutin_*`
+
+전투 화면은 [UI 바이블](ui/UI_BIBLE.md)에 따라 다시 만들었습니다. 이 절의 그림이 없으면 CSS/SVG 대체물이 보이고, 파일을 넣으면 그 자리를 바로 대신합니다.
+
+### 7-0. 이 절의 공통 규칙 (§1과 다른 점)
+- **색은 딱 두 가지: 먹색(`#0b0907`) + 황금(`#d4a83a` ~ `#f2c94c`).** §1의 시안·보라 마법광은 UI 프레임에 쓰지 않습니다. 진홍(`#c8283a`)은 적·위험 표시에만 씁니다.
+- **재질 언어:** 상시 UI는 정밀한 **황동 기계**(톱니, 눈금, 리벳), 순간 연출은 깃펜의 **잉크**(날카로운 붓 획, 튀는 방울)입니다. 한 그림에 두 언어를 섞지 마세요.
+- **글자 금지.** 모든 글자는 게임이 서체로 따로 그립니다.
+- **배경 투명 필수.** 잉크류는 "검은 잉크, 흰 배경"으로 만든 뒤 흰색을 투명으로 바꾸는 게 가장 깔끔합니다(포토샵: *색상 범위 → 흰색 삭제*, 또는 `Multiply` 상태로 알파 추출).
+- **기울기:** 화면의 기본 사선은 오른쪽 위로 6° 정도 올라가는 각도입니다. 그림 자체를 기울이지 않아도 게임이 돌려 놓으니 **수평·정면으로** 그려 주세요(컷인 초상만 예외).
+
+### 7-1. 컷인 상반신 (★1) — `portraits/cutin_kai.png`, `cutin_lyra.png`
+**어디에:** 스킬을 쓰거나 전원 패링 반격(COUNTER)이 나올 때, 화면을 가로지르는 먹색 띠 왼쪽에 0.6초 동안 미끄러져 들어오는 사선(평행사변형) 창.
+**구도:** 허리 위 상반신, 액션 포즈, **몸과 시선이 화면 오른쪽(기술명 방향)을 향함.** 창이 좌우로 22%씩 비스듬히 잘리니 얼굴과 손은 가운데 60% 안에 두세요. 기존 초상화를 *캐릭터 레퍼런스*로 첨부하면 일치도가 올라갑니다.
+**생성/저장:** 1024×1024 생성 → 512×512 저장, 투명 배경.
+
+카이:
+```
+Dynamic waist-up action shot for a JRPG skill cut-in. Kai, the 18-year-old steam swordsman (match the attached character reference exactly: messy spiky dark-brown hair, brass aviator goggles on the forehead, deep navy long coat with brass epaulettes, red scarf, brass steam backpack). He swings a broad steam-powered sword toward the right with both hands, the blade vents a sharp jet of white steam, his scarf whips behind him, fierce focused eyes looking to the right. Strong diagonal composition rising to the upper right, face and hands kept in the central 60% of the frame. Anime JRPG illustration, bold cel shading, high contrast, warm gold key light from the upper left, deep black shadows. Isolated on a transparent background, no effects outside the character silhouette, no text, no frame.
+```
+리라:
+```
+Dynamic waist-up action shot for a JRPG skill cut-in. Lyra, the aether mage (match the attached character reference exactly). She thrusts her brass-and-crystal staff toward the right, her other hand open with a small burst of golden runes, hat brim and long hair swept back by the spell's wind, calm but intense eyes looking to the right. Strong diagonal composition rising to the upper right, face and hands kept in the central 60% of the frame. Anime JRPG illustration, bold cel shading, high contrast, warm gold key light from the upper left, deep black shadows. Isolated on a transparent background, no text, no frame.
+```
+몬스터(★3, `cutin_cograt.png` 등 6종 — 영입 후 스킬 컷인용, 없으면 일반 초상으로 대체): 위 문장의 인물 설명을 §3의 해당 몬스터 설명으로 바꾸고 "attacking toward the right"로 쓰면 됩니다.
+
+### 7-2. 톱니 링 (★1) — `ui/gear_ring.png`
+**어디에:** 아군 차례에 캐릭터 옆에 뜨는 커맨드 링의 본체. 명령을 고를 때마다 **한 칸씩 회전**하고, 가운데 구멍 위에 게임이 AP 숫자와 눈금을 그립니다.
+**주의:** 회전하므로 **빛 방향이 드러나지 않게**(고른 조명, 하이라이트는 원을 따라 균일하게). 정확히 원형·정중앙, **가운데 지름의 약 58%는 투명한 구멍**. 이빨은 12~16개.
+**생성/저장:** 1024×1024 생성 → 512×512 저장.
+```
+A single ornate brass cogwheel ring seen perfectly flat from the front, for a game UI, isolated on a transparent background. Exactly circular and centered, 14 evenly spaced sharp teeth around the outside, a wide empty circular hole in the middle about 58% of the diameter (fully transparent). Engraved fine clock-dial tick marks running around the inner rim, a few rivets, subtle filigree etching. Polished warm brass and gold (#d4a83a to #f2c94c) with a thin dark ink-black outline, even soft lighting with no directional shadow so it can rotate freely, crisp clean edges, high contrast. Flat orthographic view, no perspective, no text, no background.
+```
+
+### 7-3. 컷인 잉크 띠 (★2) — `ui/ink_band.png`
+**어디에:** 컷인 때 화면을 가로로 가르는 먹색 띠(초상과 기술명이 그 위에 얹힘). 띠 가운데는 글자가 올라가니 **안쪽은 꽉 찬 먹색**, 위아래 가장자리만 붓결과 튄 방울.
+**생성/저장:** 가로 2400×360 정도(16:2.4)로 생성 → 그대로 저장. 흰 배경 검은 잉크로 만든 뒤 흰색 제거.
+```
+One single long horizontal brush stroke of thick black sumi ink, painted left to right with a wide flat brush across the entire width, very wide format 2400x360. The center of the stroke is solid opaque black; the top and bottom edges are rough and dry-brushed with bristle streaks, the right end tapers into a sharp splatter, a few small ink droplets flung above and below. Pure black ink on a plain white background, high contrast, no grey wash, no text, no other objects.
+```
+
+### 7-4. 잉크 얼룩 (★2) — `ui/ink_splat.png`
+**어디에:** PARRY! · WEAK · BREAK 같은 순간 문구 뒤에 깔리는 얼룩. 금색 글자가 그 위에 올라갑니다.
+**구도:** 가로로 긴 타원형 덩어리(가로:세로 ≈ 2.2:1), 가장자리에 튄 방울 몇 개. 가운데는 꽉 찬 먹색.
+**생성/저장:** 1024×512 → 512×256 저장, 흰색 제거해 투명.
+```
+A single splash of thick black ink hitting paper, horizontally elongated blot about 2.2 times wider than tall, solid opaque black center with an irregular splashed outline, a handful of small round droplets and thin spatter streaks flying out to the left and right. Pure black on plain white background, high contrast, no grey, no text, centered, wide format 2:1.
+```
+
+### 7-5. 대상 칼날 표식 (★2) — `ui/target_blade.png`
+**어디에:** 공격 대상을 고를 때 선택된 적 머리 위에 꽂히는 작은 단검. 게임이 14° 기울여 그립니다.
+**구도:** **세로로 곧게, 칼끝이 아래**. 짧은 십자 손잡이, 황금 칼날, 두꺼운 먹색 외곽선. 26×54px로 줄어도 형태가 보이게 단순하게.
+**생성/저장:** 512×1024 생성 → 128×256 저장, 투명.
+```
+A small stylized dagger icon for a game target marker, pointing straight down, vertical and centered, simple bold silhouette: short cross-shaped brass hilt at the top, a sharp polished gold blade (#f2c94c) tapering to a point at the bottom, a thick black ink outline around everything, a single crisp highlight line down the blade. Flat game UI icon style, high contrast, readable when shrunk to 26x54 pixels, transparent background, no text, no shadow.
+```
+
+### 7-6. 잉크 결 텍스처 (★3) — `ui/ink_texture.png`
+**어디에:** 커맨드 칼날, 파티 카드, 설명 띠 같은 **모든 먹색 패널**의 바탕에 반복해서 깔립니다. 거의 검은색이어야 글자가 읽힙니다.
+**주의:** **이음매 없는(seamless) 타일.** 밝기 차이는 아주 작게(검정 `#0b0907` ~ 짙은 갈색 `#1c160f` 사이).
+**생성/저장:** 1024×1024 → 256×256 저장, 불투명.
+```
+Seamless tileable texture of dried black sumi ink on handmade paper, very dark (between #0b0907 and #1c160f), subtle brush streaks and fine paper fibre grain, very low contrast so text on top stays readable, no visible seams, no spots brighter than dark brown, flat lighting, square 1:1, no text, no objects.
+```
+
+### 7-7. 여신의 깃털 (★2) — `ui/feather.png`
+**어디에:** 협상에서 영입에 성공했을 때 화면 위에서 십여 장이 흔들리며 떨어집니다. 바이블의 세 번째 재질 언어(**깃털 = 여신의 은총**)이고, 드물게만 나옵니다.
+**구도:** 깃털 한 장, **세로로 곧게 깃대가 아래**, 가늘고 긴 비율(1:3). 흰색~크림색 깃털에 가장자리만 은은한 금빛. 게임이 회전·크기를 바꾸므로 그림 자체는 정면·수평.
+**생성/저장:** 512×1536 생성 → 128×384 저장, 투명.
+```
+A single elegant white feather of a goddess, standing vertically with the quill at the bottom, slender 1:3 proportion, soft cream-white vanes with delicate barbs, the edges and the shaft touched with a faint warm gold glow (#f2c94c), a few barbs gently separated at the tip. Soft painterly anime illustration, clean silhouette, isolated on a transparent background, no text, no other objects.
+```
+
+---
+
+## 8. 후처리 & 적용 체크리스트
 
 1. **배경 제거** (투명으로 못 뽑았을 때): Photoshop *배경 제거*, remove.bg, `rembg` 등.
 2. **여백 정리 & 리사이즈**: 초상화 512×512 / 아이콘 256×256 / 로고 가로 ≤1600. 축소는 *Lanczos/Bicubic Sharper* 권장.
@@ -333,4 +416,6 @@ public/art/icons/cmd_attack.png  cmd_skill.png  cmd_talk.png  cmd_item.png  cmd_
 public/art/icons/item_tonic.png  item_hi_tonic.png  item_capsule.png  item_heart.png
 public/art/icons/el_phys.png  el_fire.png  el_frost.png  el_volt.png  el_aether.png
 public/art/icons/st_atkUp.png  st_defUp.png  st_haste.png  st_guard.png  st_burn.png  st_atkDown.png  st_enraged.png
+public/art/portraits/cutin_kai.png  cutin_lyra.png   (cutin_<몬스터>.png 선택)
+public/art/ui/gear_ring.png  ink_band.png  ink_splat.png  target_blade.png  ink_texture.png  feather.png
 ```
