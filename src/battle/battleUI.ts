@@ -192,18 +192,18 @@ export class BattleUI {
         plate.addEventListener('mouseenter', () => this.hoverTarget(u));
         u.ui = { plate, hp, hpt, brk, st, tag, weak };
       } else {
+        // tall slanted portrait (gold frame → ink inside), name/HP/AP overlaid on its lower part
         const card = el('div', 'party-card', undefined, this.partyPanel);
-        card.style.setProperty('--row', String(this.partyPanel.children.length - 1));
-        const por = el('div', 'portrait', portraitInner(u.pid, u.name), card);
-        por.style.setProperty('--c', u.color);
-        const info = el('div', 'pc-info', undefined, card);
-        el('div', 'pc-name', `${u.name} <span class="lv">Lv${u.level}</span>`, info);
-        const row = el('div', 'pc-row', undefined, info);
-        const hpw = el('div', 'bar hp', undefined, row);
+        card.style.setProperty('--i', String(this.partyPanel.children.length - 1));
+        const inner = el('div', 'pc-inner', undefined, el('div', 'pc-frame', undefined, card));
+        el('div', 'portrait', portraitInner(u.pid, u.name), inner);
+        const info = el('div', 'pc-info', undefined, inner);
+        el('div', 'pc-name', `${u.name}<span class="lv">Lv${u.level}</span>`, info);
+        const hpt = el('div', 'pc-hp', '', info);
+        const hpw = el('div', 'bar hp', undefined, info);
         const hp = el('div', 'fill', undefined, hpw);
-        const hpt = el('div', 'pc-hp', '', row);
         const ap = el('div', 'ap-pips', '', info);
-        const st = el('div', 'statuses', '', info);
+        const st = el('div', 'statuses', '', card);
         card.addEventListener('click', () => this.clickTarget(u));
         card.addEventListener('mouseenter', () => this.hoverTarget(u));
         u.ui = { plate: card, hp, hpt, ap, st };
@@ -213,6 +213,8 @@ export class BattleUI {
 
   setActive(u: BUnit | null) {
     for (const x of this.units) x.ui.plate?.classList.toggle('active', x === u);
+    // during a party turn the others step back
+    this.partyPanel.classList.toggle('has-active', !!u && u.side === 'party');
   }
 
   setOrder(list: BUnit[]) {

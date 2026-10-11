@@ -5,6 +5,21 @@ import { DIFFICULTY, type Difficulty } from '../data/types';
 export type DefenseResult = 'parry' | 'dodge' | 'hit';
 
 /**
+ * Prototype tuning for multi-hit enemy moves: the authored gaps (as short as 0.14 s) left no time
+ * to react between hits. Every gap is stretched, then floored above the whiff lockout (0.38 s) so
+ * one early press can't cost the next hit too. Moves keep their rhythm, just slower.
+ */
+const HIT_GAP_SCALE = 1.6;
+const MIN_HIT_GAP = 0.45;
+
+/** Authored hit offsets → the offsets actually used in battle. */
+export function spaceHits(hits: number[]) {
+  const out: number[] = [];
+  hits.forEach((h, i) => out.push(i === 0 ? h : out[i - 1] + Math.max(MIN_HIT_GAP, (h - hits[i - 1]) * HIT_GAP_SCALE)));
+  return out;
+}
+
+/**
  * Expedition-33 style defense: each incoming hit has a time; the player may parry (tight window,
  * grants AP + counter when all hits are parried) or dodge (wider window, no reward).
  * Mashing is punished with a short lockout after a whiffed input.

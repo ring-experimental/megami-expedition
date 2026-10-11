@@ -29,7 +29,7 @@ export function installDebug(game: Game) {
       return r.text();
     },
     async newGame(diff: 'story' | 'normal' | 'hard' = 'normal') {
-      document.querySelector('.title-screen')?.remove();
+      game.menus.hideTitle();
       game.newGame(diff);
       await sleep(1200);
     },

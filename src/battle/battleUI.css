@@ -16,32 +16,40 @@
 .to-chip.broken { opacity: 0.4; }
 .to-chip.broken::after { content: 'B'; position: absolute; right: 9px; top: 1px; font: 900 11px var(--f-num); color: var(--gold-hi); text-shadow: 0 0 3px #000; }
 
-/* ---------- party: slanted portrait cards, bottom-left ---------- */
-.party-panel { position: absolute; left: 22px; bottom: 22px; display: flex; flex-direction: column; gap: 6px; }
-.party-card { --shift: 0px; pointer-events: auto; position: relative; display: flex; align-items: stretch; width: 318px; height: 66px; margin-left: calc(var(--row) * 12px);
-  transform: translateX(var(--shift)); transition: transform 0.22s var(--ease-pop); }
-.party-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, var(--ink-1) 60%, rgba(22, 18, 13, 0.75)); transform: skewX(-14deg); border-left: 4px solid var(--gold-dk); }
-.party-card.active { --shift: 26px; }
-.party-card.active::before { border-left-color: var(--gold-hi); background: linear-gradient(100deg, var(--ink-2) 55%, rgba(36, 28, 19, 0.8)); }
-.party-card .portrait { position: relative; z-index: 1; flex: none; width: 74px; height: 66px; margin-left: -6px; clip-path: polygon(22% 0, 100% 0, 78% 100%, 0 100%);
-  display: grid; place-items: center; font: 900 24px var(--f-cmd); color: var(--bone); background: color-mix(in srgb, var(--c) 45%, var(--ink-0)); overflow: hidden; }
-.party-card .pc-info { position: relative; z-index: 1; flex: 1; min-width: 0; padding: 7px 26px 0 4px; }
-.pc-name { display: flex; align-items: baseline; gap: 6px; font: 800 17px var(--f-cmd); color: var(--bone); transform: rotate(-3deg); transform-origin: left; }
-.party-card.active .pc-name { color: var(--ink-0); }
-.party-card.active .pc-name::before { content: ''; position: absolute; z-index: -1; left: -6px; top: -1px; width: 118px; height: 24px; background: var(--gold-hi); transform: skewX(-14deg); }
-.pc-name .lv, .ep-name .lv { font: 800 11px var(--f-num); color: var(--gold); }
-.party-card.active .pc-name .lv { color: var(--ink-2); }
-.pc-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
-.pc-row .bar { flex: 1; }
-.pc-hp { font: 800 13px var(--f-num); color: var(--bone); min-width: 34px; text-align: right; transform: rotate(-3deg); }
-.pc-hp small { font-size: 9px; color: var(--bone-dim); }
-.ap-pips { display: flex; gap: 2px; margin-top: 5px; }
-.ap-pips i { width: 12px; height: 7px; transform: skewX(-20deg); background: var(--ink-2); outline: 1px solid var(--gold-dk); }
+/* ---------- party: a row of tall slanted portraits, bottom-left (bible §9-1) ---------- */
+/* the frame is a −12° parallelogram (top edge shifted --sl to the right); neighbours nest along it */
+.party-panel { --w: 96px; --h: 132px; --sl: 28px; position: absolute; left: 26px; bottom: 18px; display: flex; align-items: flex-end; }
+.party-card { pointer-events: auto; position: relative; flex: none; width: var(--w); height: var(--h); margin-left: calc(6px - var(--sl));
+  transform-origin: 50% 100%; transition: transform 0.22s var(--ease-pop), margin 0.22s var(--ease-settle), filter 0.2s; }
+.party-card:first-child { margin-left: 0; }
+.party-card.active:not(:first-child) { margin-left: calc(14px - var(--sl)); }
+.pc-frame, .pc-inner { position: absolute; clip-path: polygon(var(--sl) 0, 100% 0, calc(100% - var(--sl)) 100%, 0 100%); }
+.pc-frame { inset: 0; background: var(--gold-dk); }
+.pc-inner { inset: 2px; background: var(--ink-1); }
+.party-card .portrait { position: absolute; inset: 0; display: grid; place-items: center; font: 900 30px var(--f-cmd); color: var(--bone); }
+.party-card .portrait .pimg { object-fit: cover; object-position: 50% 30%; }
+/* ink rises from the bottom so the text reads over the art */
+.party-card .portrait::after { content: ''; position: absolute; z-index: 2; inset: 0; background: linear-gradient(transparent 38%, rgba(11, 9, 7, 0.82) 62%, var(--ink-0) 88%); }
+/* info rows lean with the frame: skewed from the bottom-left corner */
+.pc-info { position: absolute; z-index: 3; left: 4px; bottom: 5px; width: calc(var(--w) - var(--sl) - 10px); transform: skewX(-12deg); transform-origin: 0 100%; }
+.pc-name { display: flex; align-items: baseline; gap: 3px; font: 800 14px/1.1 var(--f-cmd); color: var(--bone); white-space: nowrap; text-shadow: 0 1px 2px #000; }
+.pc-name .lv, .ep-name .lv { font: 800 10px var(--f-num); color: var(--gold); }
+.pc-hp { font: 800 18px/1 var(--f-num); color: var(--bone); margin-top: 1px; text-shadow: 0 1px 2px #000; }
+.pc-hp small { font-size: 10px; color: var(--bone-dim); }
+.pc-info .bar { height: 6px; margin-top: 2px; transform: none; }
+.ap-pips { display: flex; gap: 1px; margin-top: 3px; }
+.ap-pips i { width: 5px; height: 6px; background: var(--ink-2); outline: 1px solid var(--gold-dk); }
 .ap-pips i.on { background: var(--gold-hi); outline-color: var(--gold-hi); }
-.party-card .statuses { position: absolute; right: 18px; top: 6px; }
-.party-card.ko { filter: grayscale(1) brightness(0.55); }
+.party-card .statuses { position: absolute; z-index: 1; top: 4px; right: -4px; flex-direction: column; align-items: flex-end; }
+/* current turn: pops up and grows, bright gold frame with a glow; the rest step back */
+.party-card.active { z-index: 2; margin-right: 8px; transform: translateY(-16px) scale(1.15); filter: drop-shadow(0 0 8px rgba(242, 201, 76, 0.55)); }
+.party-card.active .pc-frame { background: var(--gold-hi); }
+.party-panel.has-active .party-card:not(.active) { filter: brightness(0.7); }
+.party-card.ko, .party-panel.has-active .party-card.ko { filter: grayscale(1) brightness(0.5); }
 .party-card.targetable { cursor: pointer; }
-.party-card.targeted::before { border-left-color: var(--gold-hi); outline: 2px solid var(--gold-hi); }
+.party-card.targeted { z-index: 2; }
+.party-card.targeted .pc-frame { background: var(--gold-hi); }
+.party-card.low:not(.ko) .pc-frame { background: var(--crimson); }
 
 /* bars: skewed, HP green (bible §3 exception), crimson when low */
 .battle-hud .bar, .enemy-plate.battle .bar { height: 8px; border: none; border-radius: 0; background: rgba(0, 0, 0, 0.6); transform: skewX(-20deg); outline: 1px solid var(--gold-dk); }
@@ -195,7 +203,7 @@
 .art-ink-tex .cb-item:not(.sel)::before, .art-ink-tex .cr-item:not(.sel) > div::before, .art-ink-tex .def-hint::before, .art-ink-tex .move-name::before,
 .art-ink-tex .cutin .ci-band, .art-ink-tex .enemy-plate.battle.targeted::before, .art-ink-tex .cr-desc, .art-ink-tex .cb-desc {
   background-image: var(--art-ink-tex); background-size: 256px; }
-.art-ink-tex .party-card::before { background-image: var(--art-ink-tex), linear-gradient(100deg, var(--ink-1) 60%, rgba(22, 18, 13, 0.75)); background-size: 256px, auto; }
+.art-ink-tex .pc-inner { background: var(--art-ink-tex) 0 0 / 256px, var(--ink-1); }
 
 /* ---------- negotiation: face-to-face (UI bible §9-3) ---------- */
 /* battle HUD steps back while talking */

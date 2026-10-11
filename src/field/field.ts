@@ -52,6 +52,10 @@ export class FieldMode {
   private camDist = 7;
   /** R3 "camera behind the player" swing in progress */
   private camRecenter: number | null = null;
+  /** Seconds since the player last turned the camera (auto-follow waits for this). */
+  private camIdle = 0;
+  /** How long the arrow keys have been held (their turn rate ramps up for fine aim). */
+  private camKeyT = 0;
   private camPos = new THREE.Vector3();
   private camLook = new THREE.Vector3();
   private shake = 0;
@@ -348,7 +352,7 @@ export class FieldMode {
       State.current.tutorialField = true;
       setTimeout(() => this.game.ui.toast((s) => (s.device === 'pad'
         ? `${pb('rs')}로 시점을 돌릴 수 있습니다. ${pb('back')}로 버튼 안내 숨기기`
-        : '화면을 클릭하면 마우스로 시점을 조작할 수 있습니다. <kbd>H</kbd>로 버튼 안내 숨기기'), '', 6000), 600);
+        : '화면을 클릭하면 마우스로, 또는 <kbd>방향키</kbd>로 시점을 돌릴 수 있습니다. <kbd>C</kbd> 시점 정면으로 · <kbd>H</kbd> 버튼 안내 숨기기'), '', 6000), 600);
       // the core field rule, formerly in the always-on help box
       setTimeout(() => this.game.ui.toast((s) => `적의 노란 <b>브레이크 게이지</b>를 채워 기절시키고 ${s.device === 'pad' ? pb('a') : '<kbd>E</kbd>'} → 선제 공격! 등 뒤를 맞으면 기습당한다.`, 'gold', 8000), 1400);
     }
@@ -412,25 +416,47 @@ export class FieldMode {
     const controls = this.controlsEnabled;
 
     // camera control
-    if (controls && Input.locked) {
+    let turned = false;
+    if (controls && Input.locked && (Input.mouseDX || Input.mouseDY)) {
       const sens = 0.0024 * State.current.mouseSens;
       this.camYaw -= Input.mouseDX * sens;
       this.camPitch = clamp(this.camPitch + Input.mouseDY * sens, -0.15, 1.15);
+      turned = true;
     }
     if (controls) {
-      // right stick (squared for fine aim), d-pad ↑↓ zoom, R3 recenters behind the player
+      // arrow keys: ←/→ turn, ↑/↓ look up/down; ramps from 35% to full speed over 0.2 s
+      const kx = (Input.isDown('ArrowRight') ? 1 : 0) - (Input.isDown('ArrowLeft') ? 1 : 0);
+      const ky = (Input.isDown('ArrowDown') ? 1 : 0) - (Input.isDown('ArrowUp') ? 1 : 0);
+      this.camKeyT = kx || ky ? this.camKeyT + rawDt : 0;
+      if (kx || ky) {
+        const s = Math.min(1, 0.35 + this.camKeyT / 0.2 * 0.65) * rawDt;
+        this.camYaw -= kx * KEY_YAW_SPEED * s;
+        this.camPitch = clamp(this.camPitch + ky * KEY_PITCH_SPEED * s, -0.15, 1.15);
+        turned = true;
+      }
+      // right stick (squared for fine aim), d-pad ↑↓ zoom, R3 / C recenters behind the player
       const { rx, ry } = Input.stick;
       if (rx || ry) {
         const s = 2.6 * State.current.padSens * rawDt;
         this.camYaw -= rx * Math.abs(rx) * s;
         this.camPitch = clamp(this.camPitch + ry * Math.abs(ry) * s * 0.6, -0.15, 1.15);
+        turned = true;
       }
       const zoom = (Input.isDown('PadDown') ? 1 : 0) - (Input.isDown('PadUp') ? 1 : 0);
       if (zoom) this.camDist = clamp(this.camDist + zoom * 6 * rawDt, 3.5, 11);
-      if (Input.pressed('PadR3')) this.camRecenter = this.player.yaw + Math.PI;
+      if (Input.pressed('PadR3', 'KeyC')) this.camRecenter = this.player.yaw + Math.PI;
       if (this.camRecenter !== null) {
-        if (rx || ry || Input.mouseDX || Input.mouseDY || Math.abs(wrapAngle(this.camRecenter - this.camYaw)) < 0.01) this.camRecenter = null;
+        if (turned || Math.abs(wrapAngle(this.camRecenter - this.camYaw)) < 0.01) this.camRecenter = null;
         else this.camYaw = dampAngle(this.camYaw, this.camRecenter, 12, rawDt);
+      }
+      // auto-follow: running forward (or diagonally) with the camera left alone for a moment,
+      // it drifts behind the player. Not when walking back toward the camera or strafing.
+      this.camIdle = turned ? 0 : this.camIdle + rawDt;
+      // (W alone already runs away from the camera; this swings it on diagonals, in a wide arc)
+      const mi = this.player.moveInput;
+      const fwd = -mi.z / (Math.hypot(mi.x, mi.z) || 1);
+      if (this.camRecenter === null && this.camIdle > 1 && fwd > 0.3 && this.player.speed > 1) {
+        this.camYaw = dampAngle(this.camYaw, this.player.yaw + Math.PI, CAM_FOLLOW * fwd, rawDt);
       }
     }
     if (controls && Input.wheel) this.camDist = clamp(this.camDist + Input.wheel * 0.6, 3.5, 11);
@@ -597,6 +623,12 @@ export class FieldMode {
     this.camera.lookAt(this.camLook);
   }
 }
+
+/** Arrow-key camera turn rates at full speed (rad/s). */
+const KEY_YAW_SPEED = 2.2;
+const KEY_PITCH_SPEED = 1.1;
+/** Auto-follow strength: on a diagonal it turns the camera ~0.3 rad/s (a ~25 m running circle). */
+const CAM_FOLLOW = 0.55;
 
 /** Cell size (m) for merged static props: big enough to cut draw calls, small enough to still cull. */
 const STATIC_CELL = 48;

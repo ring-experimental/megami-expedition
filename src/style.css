@@ -32,7 +32,9 @@
   --ease-settle: cubic-bezier(.2, .8, .2, 1);
   --ease-out: cubic-bezier(.6, 0, .9, .4);
 }
-* { box-sizing: border-box; }
+/* no faux bold: --f-ink asks for 900 (Cinzel Decorative), but its Hangul falls back to Gasoek One,
+   which only ships 400 — synthesized bold on top of it smeared the strokes together */
+* { box-sizing: border-box; font-synthesis-weight: none; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0a07; color: var(--ink); font-family: var(--font); user-select: none; }
 #app { position: fixed; inset: 0; }
 #game { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
@@ -112,14 +114,6 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 0.35em; margin: 0 1px;
 .popup.weak-tag { color: var(--gold); font-size: 15px; }
 .popup.resist-tag { color: #9aa2ad; font-size: 15px; }
 
-/* ---------- battle wipe ---------- */
-.battle-wipe { position: absolute; inset: 0; z-index: 45; pointer-events: none; }
-.battle-wipe .shard { position: absolute; left: 50%; top: 50%; width: 140vmax; height: 16vmax; background: #fff; transform-origin: 0 50%; transform: rotate(calc(var(--i) * 30deg)) scaleX(0); animation: shard 0.75s cubic-bezier(.6,0,.4,1) forwards; animation-delay: calc(var(--i) * 18ms); }
-.battle-wipe.advantage .shard { background: linear-gradient(90deg, #fff6d0, #ffd34a); }
-.battle-wipe.ambush .shard { background: linear-gradient(90deg, #ffd0c8, #c0281a); }
-.battle-wipe.neutral .shard { background: linear-gradient(90deg, #ffffff, #c9a14a); }
-@keyframes shard { 0% { transform: rotate(calc(var(--i) * 30deg)) scaleX(0); } 55% { transform: rotate(calc(var(--i) * 30deg)) scaleX(1); opacity: 1; } 100% { transform: rotate(calc(var(--i) * 30deg)) scaleX(1); opacity: 0; } }
-
 /* field HUD: src/ui/fieldHud.css */
 /* battle HUD: src/battle/battleUI.css */
 
@@ -170,7 +164,7 @@ body[data-pad='nintendo'] .pb-lb { --l: 'L'; } body[data-pad='nintendo'] .pb-rb 
 body[data-pad='nintendo'] .pb-lt { --l: 'ZL'; } body[data-pad='nintendo'] .pb-rt { --l: 'ZR'; }
 body[data-pad='nintendo'] .pb-start { --l: '+'; } body[data-pad='nintendo'] .pb-back { --l: '−'; }
 /* DOM menu focus (ui/padNav.ts) — only drawn while a pad is the active device */
-body.pad .pad-focus { outline: 2px solid var(--gold-hi); outline-offset: 3px; box-shadow: 0 0 18px rgba(242, 201, 76, 0.45); }
+body.navfocus .pad-focus { outline: 2px solid var(--gold-hi); outline-offset: 3px; box-shadow: 0 0 18px rgba(242, 201, 76, 0.45); }
 .ctl-device { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(201, 161, 74, 0.3); }
 .ctl-device b { color: var(--brass-hi); font-size: 15px; }
 .ctl-device .dim { font-size: 12px; }

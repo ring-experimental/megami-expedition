@@ -1,0 +1,50 @@
+/* Battle-start ink cut (UI bible §1 ink, §6 motion: burst within 40–50ms, bleed out over 400ms) */
+.bcut { position: absolute; inset: 0; z-index: 48; pointer-events: none; overflow: hidden;
+  --edge: var(--ink-0); --core: var(--ink-0); --gleam: var(--bone); --splat-c: var(--ink-0); }
+.bcut.advantage { --edge: var(--gold-dk); --core: var(--gold-hi); --gleam: #fff6dc; --splat-c: var(--gold); }
+.bcut.ambush { --edge: #2a0609; --core: var(--crimson); --gleam: var(--bone); --splat-c: var(--crimson); }
+.bcut canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* freeze: the ink-toned halves fade in over the colored frame */
+.bc-half { position: absolute; inset: 0; z-index: 1; opacity: 0; will-change: transform; animation: bcFreeze var(--freeze, 150ms) linear forwards; }
+@keyframes bcFreeze { to { opacity: 1; } }
+/* split: a small jolt apart, then they fly off along the cut */
+.bcut.split .bc-half { opacity: 1; animation: bcSplit var(--split, 600ms) forwards; }
+@keyframes bcSplit {
+  0% { transform: none; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+  14% { transform: translate(calc(var(--dx) * 0.04), calc(var(--dy) * 0.04)); animation-timing-function: cubic-bezier(.55, 0, .85, .35); }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
+}
+
+/* the stroke: a blade, thickest where it crosses the enemy (the element is centered there),
+   leaning toward the striking side; drawn in from that side */
+.bc-stroke { position: absolute; z-index: 3; width: 170vmax; height: 8.5vh; min-height: 36px; }
+.bc-stroke.thin { height: 2vh; min-height: 9px; }
+.bc-stroke.from-l { animation: bcDrawL 50ms linear both; }
+.bc-stroke.from-r { animation: bcDrawR 50ms linear both; }
+@keyframes bcDrawL { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+@keyframes bcDrawR { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0); } }
+.bc-ink { position: absolute; inset: 0;
+  background: linear-gradient(var(--edge), var(--core) 30%, var(--gleam) 48%, var(--gleam) 52%, var(--core) 70%, var(--edge)); }
+.from-l .bc-ink { clip-path: polygon(0 46%, 44% 0, 100% 48%, 100% 52%, 44% 100%, 0 54%); }
+.from-r .bc-ink { clip-path: polygon(100% 46%, 56% 0, 0 48%, 0 52%, 56% 100%, 100% 54%); }
+.bcut.split .bc-ink { animation: bcBleed 400ms cubic-bezier(.2, .8, .2, 1) forwards; }
+@keyframes bcBleed { to { transform: scaleY(0.15); opacity: 0; } }
+
+/* ink burst where the cut passes the enemy */
+.bc-splat { position: absolute; z-index: 2; width: 84vh; height: 42vh; background: var(--splat-c); opacity: 0;
+  transform: translate(-50%, -50%) rotate(-6deg) scale(0.4); animation: bcSplat 500ms cubic-bezier(.2, .8, .2, 1) forwards; }
+.bc-splat.art { -webkit-mask: var(--splat) center / contain no-repeat; mask: var(--splat) center / contain no-repeat; }
+.bc-splat:not(.art) { border-radius: 50%; width: 40vh; height: 12vh; filter: blur(3px); }
+@keyframes bcSplat {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-6deg) scale(0.4); }
+  8% { opacity: 0.95; transform: translate(-50%, -50%) rotate(-6deg) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(-6deg) scale(1.12); }
+}
+
+/* ambush: each strike jolts the frame (scaled up a little so the edges never show the canvas below) */
+.bcut.shake { animation: bcShake 140ms linear; }
+@keyframes bcShake {
+  20% { transform: translate(-10px, 5px) scale(1.03); } 45% { transform: translate(8px, -6px) scale(1.03); }
+  70% { transform: translate(-5px, 3px) scale(1.03); } 100% { transform: none; }
+}

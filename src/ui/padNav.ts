@@ -7,15 +7,41 @@ const FOCUSABLE = 'button, .rc:not(.locked), .opt, .mn-focus';
 /** A focusable row that ←/→ adjusts in place (settings ◀ value ▶) instead of moving focus. */
 export type Adjustable = HTMLElement & { adjust?: (dir: number) => void };
 
+/** Keyboard keys that drive menu focus (the pad has its own; the mouse just hovers). */
+const KB = {
+  left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'], up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
+  ok: ['Enter', 'NumpadEnter', 'Space'], prevTab: ['KeyQ'], nextTab: ['KeyE'],
+};
+
 /**
- * Gamepad focus navigation for DOM menus (title, pause). D-pad/stick moves a `.pad-focus`
- * highlight to the nearest item in that direction, A clicks it, ←/→ adjust a focused slider.
- * Uses a class instead of DOM focus so keyboard Enter/Space never double-activate buttons.
+ * The focus highlight shows while the menus are driven by pad or keyboard (`body.navfocus`) and
+ * hides once the mouse moves — hover is the mouse's highlight.
+ */
+let installed = false;
+function installNavFocus() {
+  if (installed) return;
+  installed = true;
+  const set = (v: boolean) => document.body.classList.toggle('navfocus', v);
+  Input.subscribe((s) => { if (s.device === 'pad') set(true); });
+  window.addEventListener('mousemove', (e) => { if (e.isTrusted && Input.state.device !== 'pad' && (e.movementX || e.movementY)) set(false); });
+}
+
+/**
+ * Pad and keyboard focus navigation for DOM menus (title, pause). D-pad/stick or arrows/WASD move
+ * a `.pad-focus` highlight to the nearest item in that direction, A or Enter/Space clicks it, ←/→
+ * adjust a focused setting row, LB/RB or Q/E switch tabs, Tab/Shift+Tab step through the items.
+ * The mouse moves the same focus by hovering, so keys continue from where the pointer was.
+ * Uses a class instead of DOM focus; Menus suppresses the browser's own Enter/Space/Tab handling.
  */
 export class PadNav {
   private cur: HTMLElement | null = null;
   /** position to restore after the menu re-renders (-1 = pick the screen's default item) */
   private lastIndex = -1;
+  private hooked = new WeakSet<HTMLElement>();
+
+  constructor() {
+    installNavFocus();
+  }
 
   /** Call when a new screen is shown so focus starts on its default item. */
   reset() {
@@ -34,17 +60,32 @@ export class PadNav {
     e.dispatchEvent(new Event('padfocus'));
   }
 
-  update(root: HTMLElement, onBack: () => void, onTab?: (dir: number) => void) {
+  /**
+   * @param back keyboard keys that go back here (the pad always uses B). Esc on the pause menu
+   *   is left to Game, which guards against the Esc that released the pointer lock.
+   */
+  update(root: HTMLElement, onBack: () => void, onTab?: (dir: number) => void, back: string[] = ['Escape', 'Backspace']) {
+    if (!this.hooked.has(root)) {
+      this.hooked.add(root);
+      // hovering moves the focus (silently), so the highlight and the keys agree
+      root.addEventListener('mouseover', (e) => {
+        const t = (e.target as HTMLElement).closest<HTMLElement>(FOCUSABLE);
+        if (t && root.contains(t) && !(t as HTMLButtonElement).disabled) this.focus(t);
+      });
+    }
     const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((e) => e.offsetParent !== null && !(e as HTMLButtonElement).disabled);
     if (!items.length) return;
+    const kbUsed = [KB.left, KB.right, KB.up, KB.down, KB.ok, KB.prevTab, KB.nextTab, ['Tab']].some((c) => Input.pressed(...c));
+    if (kbUsed) document.body.classList.add('navfocus');
     if (!this.cur || !items.includes(this.cur)) {
       const fallback = this.lastIndex < 0 ? items.find((e) => e.dataset.padFirst !== undefined) ?? items[0] : items[Math.min(this.lastIndex, items.length - 1)];
       this.cur = null;
       this.focus(fallback);
     }
     const cur = this.cur!;
-    const dx = Input.pressed('PadLeft', 'PadLSLeft') ? -1 : Input.pressed('PadRight', 'PadLSRight') ? 1 : 0;
-    const dy = dx ? 0 : Input.pressed('PadUp', 'PadLSUp') ? -1 : Input.pressed('PadDown', 'PadLSDown') ? 1 : 0;
+    const dx = Input.pressed('PadLeft', 'PadLSLeft', ...KB.left) ? -1 : Input.pressed('PadRight', 'PadLSRight', ...KB.right) ? 1 : 0;
+    const dy = dx ? 0 : Input.pressed('PadUp', 'PadLSUp', ...KB.up) ? -1 : Input.pressed('PadDown', 'PadLSDown', ...KB.down) ? 1 : 0;
+    const tabStep = Input.pressed('Tab') ? (Input.isDown('ShiftLeft', 'ShiftRight') ? -1 : 1) : 0;
     const range = cur.querySelector<HTMLInputElement>('input[type=range]');
     const adj = (cur as Adjustable).adjust;
     if (adj && dx) {
@@ -57,14 +98,18 @@ export class PadNav {
     } else if (dx || dy) {
       const next = this.nearest(items, dx, dy);
       if (next) { this.focus(next); Sfx.play('ui_move'); }
-    } else if (Input.pressed('PadA')) {
+    } else if (tabStep) {
+      // document order, wrapping
+      this.focus(items[(items.indexOf(cur) + tabStep + items.length) % items.length]);
+      Sfx.play('ui_move');
+    } else if (Input.pressed('PadA', ...KB.ok)) {
       const box = cur.querySelector<HTMLInputElement>('input[type=checkbox]');
       if (box) { box.click(); Sfx.play('ui_ok'); }
       else cur.click();
-    } else if (Input.pressed('PadB')) {
+    } else if (Input.pressed('PadB', ...back)) {
       onBack();
-    } else if (onTab && Input.pressed('PadLB', 'PadRB')) {
-      onTab(Input.pressed('PadLB') ? -1 : 1);
+    } else if (onTab && Input.pressed('PadLB', 'PadRB', ...KB.prevTab, ...KB.nextTab)) {
+      onTab(Input.pressed('PadLB', ...KB.prevTab) ? -1 : 1);
     }
     if (this.cur) this.lastIndex = Math.max(0, items.indexOf(this.cur));
   }

@@ -11,6 +11,7 @@ import { Graphics, QUALITY } from './graphics';
 import { UI } from '../ui/ui';
 import { Menus } from '../ui/menus';
 import { padName } from '../ui/glyph';
+import { battleCut } from '../ui/battleCut';
 import { FieldMode } from '../field/field';
 import { BattleMode, type BattleRequest } from '../battle/battle';
 import { GameState, State } from './state';
@@ -212,10 +213,42 @@ export class Game {
     this.battle?.resize(w, h);
   }
 
+  /**
+   * The one place screens open and close: leave the current mode, then enter the next. Mode
+   * changes elsewhere must go through here, so no screen's UI outlives the mode that owns it.
+   * Battle UI is the exception that proves it: `BattleMode.start()` shows it and its `end()` hides
+   * it before the battle promise resolves, i.e. always within the 'battle' mode.
+   */
+  setMode(next: Mode) {
+    const prev = this.mode;
+    if (prev === next) return;
+    switch (prev) {
+      case 'title':
+        this.menus.hideTitle();
+        break;
+      case 'field':
+        if (this.paused) { this.paused = false; this.menus.hidePause(); }
+        Input.exitLock();
+        this.field.exit();
+        // field damage numbers would otherwise drift on through the next screen's camera
+        this.ui.clearPopups();
+        break;
+    }
+    this.mode = next;
+    switch (next) {
+      case 'title':
+        this.titleT = 0;
+        this.ui.camera = this.field.camera;
+        this.menus.showTitle();
+        break;
+      case 'field':
+        this.field.enter();
+        break;
+    }
+  }
+
   showTitle() {
-    this.mode = 'title';
-    this.field.hud.setVisible(false);
-    this.menus.showTitle();
+    this.setMode('title');
   }
 
   newGame(diff: Difficulty) {
@@ -224,8 +257,7 @@ export class Game {
     this.field.resetEnemies();
     this.field.respawnPlayer();
     this.ui.fadeOut(300).then(() => {
-      this.mode = 'field';
-      this.field.enter();
+      this.setMode('field');
       this.ui.fadeIn(600);
       this.ui.banner('에테르 평원', '멈춘 시계탑을 향해', 'zone', 2200);
     });
@@ -233,14 +265,13 @@ export class Game {
 
   async startBattle(req: BattleRequest) {
     if (this.mode !== 'field') return;
-    this.mode = 'transition';
-    Input.exitLock();
-    this.field.exit();
+    // freeze the frame the contact happened on (the field stops updating while in 'transition')
+    const shot = this.snapshot(this.field.scene, this.field.camera, this.field.fx.lights);
+    const focus = req.source ? this.ui.project(req.source.pos.clone().lerp(req.source.topPos(), 0.5)) : null;
+    this.setMode('transition');
     Sfx.play('battle_start');
-    Input.rumble(0.6, 0.6, 250);
-    this.ui.flash(req.advantage === 'enemy' ? '#ff5040' : req.advantage === 'party' ? '#ffe9a0' : '#ffffff', 220);
-    await this.ui.battleWipe(req.advantage === 'party' ? 'advantage' : req.advantage === 'enemy' ? 'ambush' : 'neutral');
-    this.mode = 'battle';
+    await battleCut(this.ui.root, shot, focus, req.advantage === 'party' ? 'advantage' : req.advantage === 'enemy' ? 'ambush' : 'neutral');
+    this.setMode('battle');
     let result = await this.battle.start(req);
     while (result === 'retry') {
       // restore pre-battle HP (simple: full heal of active members to keep testing quick)
@@ -250,8 +281,6 @@ export class Game {
       result = await this.battle.start(req);
     }
     await this.ui.fadeOut(350);
-    this.mode = 'field';
-    this.ui.camera = this.field.camera;
     if (result === 'defeat') {
       State.current.healAll();
       this.field.respawnPlayer();
@@ -259,7 +288,7 @@ export class Game {
     } else {
       this.field.afterBattle(result === 'victory' ? 'victory' : 'fled', req.source);
     }
-    this.field.enter();
+    this.setMode('field');
     this.ui.fadeIn(400);
   }
 
@@ -278,6 +307,24 @@ export class Game {
     // the button that closed the menu (A/B on a pad) must not also attack/dodge this frame
     Input.consumePressed();
     Input.requestLock();
+  }
+
+  /**
+   * Render one frame of `scene` and copy it to a 2D canvas (read right after rendering, so the
+   * drawing buffer is still intact). Capped at 1920 px wide: it's only shown for a moment.
+   */
+  private snapshot(scene: THREE.Scene, camera: THREE.Camera, lights: Parameters<typeof uploadFakeLights>[0]) {
+    uploadFakeLights(lights, camera);
+    this.renderPass.scene = scene;
+    this.renderPass.camera = camera;
+    this.composer.render(0);
+    const src = this.renderer.domElement;
+    const k = Math.min(1, 1920 / src.width);
+    const c = document.createElement('canvas');
+    c.width = Math.round(src.width * k);
+    c.height = Math.round(src.height * k);
+    c.getContext('2d')!.drawImage(src, 0, 0, c.width, c.height);
+    return c;
   }
 
   private frame() {
@@ -303,7 +350,8 @@ export class Game {
   private tick(dt: number, render: boolean) {
     Input.pollGamepads();
     if (this.mode === 'field' && !this.paused && Input.pressed('Escape', 'PadStart') && this.field.controlsEnabled) this.openPause();
-    else if (this.paused && Input.pressed('Escape', 'PadStart') && performance.now() - this.pauseOpenedAt > 350) this.closePause();
+    // Esc / Start back out of a menu sub-state (e.g. a party swap) before closing the menu
+    else if (this.paused && Input.pressed('Escape', 'PadStart') && performance.now() - this.pauseOpenedAt > 350) { if (!this.menus.back()) this.closePause(); }
     else if (this.mode === 'title' || this.paused) this.menus.padUpdate();
 
     let scene: THREE.Scene, camera: THREE.Camera;
@@ -318,7 +366,7 @@ export class Game {
         const a = this.titleT * 0.06;
         this.field.camera.position.set(Math.sin(a) * 24, 9 + Math.sin(this.titleT * 0.2) * 1.5, -30 + Math.cos(a) * 24);
         this.field.camera.lookAt(0, 7, -46);
-      } else if (!this.paused) {
+      } else if (!this.paused && this.mode !== 'transition') {
         this.field.update(dt);
       }
       scene = this.field.scene;

@@ -70,6 +70,8 @@ function devSnapshots(): Plugin {
 }
 
 export default defineConfig({
+  // relative asset URLs: the build also runs from a subpath (GitHub Pages: /megami-expedition/)
+  base: './',
   plugins: [artManifest(), devSnapshots()],
   server: { port: Number(process.env.PORT) || 5173, open: false },
   build: { target: 'es2022', chunkSizeWarningLimit: 2000 },

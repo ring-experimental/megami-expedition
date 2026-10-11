@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { clamp, el } from '../core/utils';
+import { clamp, el, josa } from '../core/utils';
 import { artSrc, icon, logoSrc, portraitInner } from './art';
 import { FEATHER_SVG, gearSvg } from './ornaments';
 import { Sfx } from '../core/audio';
@@ -28,6 +28,13 @@ export class Menus {
   private pause: HTMLElement | null = null;
   private tab = 'party';
   private nav = new PadNav();
+  /**
+   * Swapping a reserve member in while the party is full: 'ask' shows the confirm dialog, 'pick'
+   * waits for the active member to replace. Back (Esc / B / Backspace) returns to before the click.
+   */
+  private partyPick: { id: string; step: 'ask' | 'pick' } | null = null;
+  /** where pad/keyboard focus is confined during partyPick (the dialog, or the active slots) */
+  private pickRoot: HTMLElement | null = null;
   private diag: HTMLElement | null = null;
   private diagHtml = '';
   /** the mounted controls page (title or pause tab), re-rendered whenever the input device changes */
@@ -37,6 +44,12 @@ export class Menus {
     Input.subscribe((s) => {
       if (this.controls?.isConnected) this.controls.innerHTML = controlsPage(s);
     });
+    // PadNav drives the menus from the keyboard: keep the browser from also clicking the button
+    // that has DOM focus (Enter/Space) or moving its own focus ring around (Tab)
+    window.addEventListener('keydown', (e) => {
+      const open = this.pause || (this.title && !this.title.classList.contains('out'));
+      if (open && ['Enter', 'NumpadEnter', 'Space', 'Tab'].includes(e.code)) e.preventDefault();
+    }, true);
   }
 
   // -------------------------------------------------------------------------
@@ -87,8 +100,7 @@ export class Menus {
         if (k === 'normal') c.dataset.padFirst = '';
         c.onclick = () => {
           Sfx.play('ui_ok');
-          this.title?.classList.add('out');
-          setTimeout(() => { this.title?.remove(); this.title = null; }, 500);
+          this.hideTitle();
           this.game.newGame(k);
         };
       });
@@ -104,14 +116,41 @@ export class Menus {
     main();
   }
 
+  /** Fade the title screen out (no-op if it is already gone or going). */
+  hideTitle() {
+    const t = this.title;
+    if (!t || t.classList.contains('out')) return;
+    t.classList.add('out');
+    setTimeout(() => { t.remove(); if (this.title === t) this.title = null; }, 500);
+  }
+
   /** Gamepad navigation for whichever DOM menu is open (called every frame by Game). */
   padUpdate() {
-    if (this.pause) {
-      this.nav.update(this.pause, () => { Sfx.play('ui_back'); this.game.closePause(); }, (d) => this.cycleTab(d));
+    if (this.pause && this.partyPick && this.pickRoot?.isConnected) {
+      this.nav.update(this.pickRoot, () => this.cancelPick(), undefined, ['Backspace']);
+    } else if (this.pause) {
+      this.nav.update(this.pause, () => { Sfx.play('ui_back'); this.game.closePause(); }, (d) => this.cycleTab(d), ['Backspace']);
       this.updateDiag();
     } else if (this.title && !this.title.classList.contains('out')) {
       this.nav.update(this.title, () => (this.title?.querySelector('.back') as HTMLElement | null)?.click());
     }
+  }
+
+  /** Esc / Start in the pause menu: steps back out of a sub-state first. True if it did. */
+  back() {
+    if (!this.partyPick) return false;
+    this.cancelPick();
+    return true;
+  }
+
+  private cancelPick() {
+    const id = this.partyPick?.id;
+    this.partyPick = null;
+    Sfx.play('ui_back');
+    this.renderPause();
+    // focus returns to the reserve card that started it
+    const c = this.pause?.querySelector<HTMLElement>(`.pt-mini[data-id="${id}"]`);
+    if (c) this.nav.focus(c);
   }
 
   /** Live view of what the browser reports for each pad (settings tab) — for odd controllers / Steam Input. */
@@ -147,6 +186,7 @@ export class Menus {
   // -------------------------------------------------------------------------
   showPause() {
     this.pause?.remove();
+    this.partyPick = null;
     const p = el('div', 'pause-menu', undefined, this.game.ui.topLayer);
     this.pause = p;
     p.innerHTML = `<div class="mn-title">Menu</div><div class="mn-money">⚙ <b></b> 기어</div>
@@ -166,21 +206,21 @@ export class Menus {
         setTimeout(() => { titleBtn.classList.remove('armed'); titleBtn.textContent = '타이틀로'; }, 3000);
         return;
       }
-      this.hidePause();
-      this.game.paused = false;
-      this.game.field.exit();
-      this.game.showTitle();
+      this.game.setMode('title'); // leaving the field also closes this menu
     };
     const tabs = p.querySelector('.mn-tabs') as HTMLElement;
     PAUSE_TABS.forEach(([id, label], i) => {
       const b = el('button', 'mn-tab' + (id === this.tab ? ' on' : ''), `<span>${label}</span>`, tabs);
       b.style.setProperty('--i', String(i));
-      b.onclick = () => { if (this.tab !== id) { Sfx.play('ui_move'); this.tab = id; this.renderPause(); } };
+      b.onclick = () => { if (this.tab !== id && !this.partyPick) { Sfx.play('ui_move'); this.tab = id; this.renderPause(); } };
     });
+    // tab-switch keys under the tabs, following the input device
+    bindInput(el('div', 'mn-tabhint', '', tabs), (s) => (s.device === 'pad' ? `${pb('lb')}${pb('rb')}` : '<kbd>Q</kbd><kbd>E</kbd>') + '<span>탭 전환</span>');
     this.renderPause();
   }
 
   hidePause() {
+    this.partyPick = null;
     this.pause?.remove();
     this.pause = null;
   }
@@ -189,6 +229,7 @@ export class Menus {
     const p = this.pause;
     if (!p) return;
     const st = State.current;
+    p.querySelector('.mn-modal')?.remove();
     (p.querySelector('.mn-money b') as HTMLElement).textContent = String(st.money);
     p.querySelectorAll('.mn-tab').forEach((b, i) => b.classList.toggle('on', PAUSE_TABS[i][0] === this.tab));
     const body = p.querySelector('.mn-body') as HTMLElement;
@@ -204,8 +245,17 @@ export class Menus {
   /** Party: three battle slots on top, the reserve below, details of the hovered/focused card. */
   private renderParty(body: HTMLElement) {
     const st = State.current;
-    bindInput(el('div', 'mn-note', '', body), (s) => `전투 참가 최대 3명 (카이 고정). ${s.device === 'pad' ? `카드에서 ${pb('a')}` : '카드를 클릭해'} 참가 ↔ 대기를 바꿉니다. 같은 종족을 다시 영입하면 그 동료에게 경험치로 흡수됩니다.`);
-    const slots = el('div', 'pt-slots', undefined, body);
+    const pick = this.partyPick;
+    const picking = pick?.step === 'pick';
+    if (picking) {
+      const name = st.member(pick.id).name;
+      const bar = el('div', 'mn-note pt-pickbar', '', body);
+      bindInput(bar, (s) => `<b>${josa(name, '과', '와')}</b> 교체할 참가 멤버를 고르세요 <button class="pt-cancel">${s.device === 'pad' ? pb('b') : '<kbd>Esc</kbd>'} 취소</button>`);
+      bar.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('.pt-cancel')) this.cancelPick(); });
+    } else {
+      bindInput(el('div', 'mn-note', '', body), (s) => `전투 참가 최대 3명 (카이 고정). ${s.device === 'pad' ? `카드에서 ${pb('a')}` : '카드를 클릭해'} 참가 ↔ 대기를 바꿉니다. 참가 인원이 가득 차면 대기 멤버를 골라 교체합니다. 같은 종족을 다시 영입하면 그 동료에게 경험치로 흡수됩니다.`);
+    }
+    const slots = el('div', `pt-slots${picking ? ' picking' : ''}`, undefined, body);
     el('div', 'mn-sec', '대기', body);
     const reserve = el('div', 'pt-reserve', undefined, body);
     const detail = el('div', 'pt-detail', '', body);
@@ -222,7 +272,9 @@ export class Menus {
       const on = st.active.includes(m.id);
       const sp = m.kind === 'monster' ? SPECIES[m.id] : null;
       const sub = m.kind === 'hero' ? HEROES[m.id as 'kai'].title : `${PERSONALITIES[sp!.personality].name} · 흡수 ${st.bestiary[m.id].absorbed}회`;
-      const c = el('div', `rc ${big ? 'pt-card' : 'pt-mini'}${on ? ' on' : ''}${m.id === 'kai' ? ' fixed' : ''}`, `
+      // while picking, only the swappable active cards stay focusable (.rc.locked is skipped by PadNav)
+      const pickCls = !picking ? '' : !big ? (m.id === pick.id ? ' picked locked' : ' locked') : m.id === 'kai' ? ' locked' : ' swap-target';
+      const c = el('div', `rc ${big ? 'pt-card' : 'pt-mini'}${on ? ' on' : ''}${m.id === 'kai' ? ' fixed' : ''}${pickCls}`, `
         <div class="pt-por" style="--c:${m.color}">${portraitInner(m.id, m.name)}</div>
         <div class="pt-info"><div class="pt-name">${m.name}<span class="lv">Lv${m.level}</span></div><div class="pt-sub">${sub}</div>
         <div class="pt-bar hp"><i style="width:${(m.hp / s.hp) * 100}%"></i></div><div class="pt-num">HP ${Math.ceil(m.hp)} / ${s.hp}</div>
@@ -230,11 +282,23 @@ export class Menus {
         ${big ? `<div class="pt-stamp">${m.id === 'kai' ? '고정' : '참가'}</div>` : ''}`, big ? slots : reserve);
       c.addEventListener('mouseenter', () => show(m));
       c.addEventListener('padfocus', () => show(m));
+      c.dataset.id = m.id;
       c.onclick = () => {
+        if (picking) {
+          // the swap: the reserve member takes this one's slot
+          if (!big || m.id === 'kai') { Sfx.play('ui_error'); return; }
+          st.active[st.active.indexOf(m.id)] = pick.id;
+          this.partyPick = null;
+          Sfx.play('ui_ok');
+          this.renderPause();
+          const nc = this.pause?.querySelector<HTMLElement>(`.pt-card[data-id="${pick.id}"]`);
+          if (nc) this.nav.focus(nc);
+          return;
+        }
         if (m.id === 'kai') { Sfx.play('ui_error'); return; }
         if (on) st.active = st.active.filter((x) => x !== m.id);
         else if (st.active.length < 3) st.active.push(m.id);
-        else { Sfx.play('ui_error'); this.game.ui.toast('참가 인원은 최대 3명입니다'); return; }
+        else { Sfx.play('ui_ok'); this.partyPick = { id: m.id, step: 'ask' }; this.renderPause(); return; }
         Sfx.play('ui_ok');
         this.renderPause();
       };
@@ -247,6 +311,32 @@ export class Menus {
     rest.forEach((m) => card(m, false));
     if (!rest.length) el('div', 'mn-note dim', '대기 중인 동료가 없습니다. 전투에서 몬스터와 대화해 영입해 보세요.', reserve);
     show(active[0] ?? st.roster[0]);
+
+    this.pickRoot = null;
+    if (pick?.step === 'ask') this.pickRoot = this.swapDialog(st.member(pick.id).name);
+    else if (picking) {
+      this.pickRoot = slots;
+      show(st.member(pick.id));
+      const first = slots.querySelector<HTMLElement>('.swap-target');
+      if (first) this.nav.focus(first);
+    }
+  }
+
+  /** "Swap <name> in?" — one line + Yes / No, over the darkened party tab. */
+  private swapDialog(name: string) {
+    const d = el('div', 'mn-modal', `<div class="mm-box"><div class="mm-q"><b>${josa(name, '을', '를')}</b> 참가시킬까요?</div>
+      <div class="mm-sub">참가 인원이 가득 찼습니다. 다음에 교체할 참가 멤버를 고릅니다.</div>
+      <div class="mm-btns"><button class="mn-btn yes" data-pad-first>예</button><button class="mn-btn no">아니오</button></div></div>`, this.pause!);
+    this.nav.reset();
+    (d.querySelector('.yes') as HTMLElement).onclick = () => {
+      Sfx.play('ui_ok');
+      this.partyPick!.step = 'pick';
+      this.renderPause();
+    };
+    (d.querySelector('.no') as HTMLElement).onclick = () => this.cancelPick();
+    // a click on the dimmed backdrop also says no
+    d.addEventListener('click', (e) => { if (e.target === d) this.cancelPick(); });
+    return d.querySelector('.mm-box') as HTMLElement;
   }
 
   /** Bestiary: species list on the left, a large entry on the right. */

@@ -127,12 +127,4 @@ export class UI {
     this.fade.style.opacity = '0';
     await new Promise((r) => setTimeout(r, ms));
   }
-
-  /** Battle-start shatter transition (CSS). */
-  async battleWipe(kind: 'advantage' | 'ambush' | 'neutral') {
-    const e = el('div', 'battle-wipe ' + kind, '', this.topLayer);
-    for (let i = 0; i < 12; i++) el('div', 'shard', undefined, e).style.setProperty('--i', String(i));
-    await new Promise((r) => setTimeout(r, 650));
-    setTimeout(() => e.remove(), 900);
-  }
 }

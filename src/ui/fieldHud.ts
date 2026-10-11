@@ -61,6 +61,11 @@ export class FieldHud {
   private promptText = '';
   private interactKey = '';
   private mapT = 0;
+  /**
+   * The field keeps simulating while the HUD is hidden (title backdrop, battle-start wipe), so the
+   * HUD must not draw then — otherwise it re-shows the enemy plates `setVisible(false)` just hid.
+   */
+  private visible = true;
 
   constructor(private ui: UI, private field: FieldMode) {
     this.root = el('div', 'field-hud', undefined, ui.hudLayer);
@@ -83,6 +88,7 @@ export class FieldHud {
   }
 
   setVisible(v: boolean) {
+    this.visible = v;
     this.root.style.display = v ? '' : 'none';
     if (!v) {
       for (const e of this.field.enemies) if (e.ui) e.ui.root.style.display = 'none';
@@ -153,6 +159,7 @@ export class FieldHud {
   }
 
   update(dt: number) {
+    if (!this.visible) return;
     // party: slanted portrait cards, same grammar as the battle cards
     const html = State.current.activeMembers().map((m, i) => {
       const max = State.current.stats(m).hp;
