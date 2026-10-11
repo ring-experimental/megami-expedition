@@ -35,3 +35,8 @@ export function icon(kind: IconKind, id: string, fallback = '') {
 export function logoSrc() {
   return find('art/ui/logo');
 }
+
+/** Path of an optional art file (e.g. 'ui/gear_ring', no extension), or null when absent. */
+export function artSrc(path: string) {
+  return find('art/' + path);
+}
