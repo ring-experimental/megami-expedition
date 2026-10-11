@@ -72,7 +72,6 @@ src/
 tools/blender/               Blender 5.2 모델 생성·리깅 스크립트 (ASSET_SPEC.md / RIG_SPEC.md = 모델↔코드 규약)
   hp_helpers.py              하이폴리 공용 헬퍼 (베벨·스무스+하드엣지·버텍스 AO·COLOR_0 export·EEVEE 프리뷰)
   model_props.py             props.glb 조립기 ← props_{nature,steam,small,clocktower,airship}.py 그룹 모듈
-  legacy_lowpoly/            하이폴리 패스 이전의 로우폴리 스크립트·GLB·프리뷰 (비교/롤백용)
 public/models/*.glb          생성된 모델 (카이·리라 = 로우폴리 플랫, 나머지 = 하이폴리 스무스, 2026-10-11)
 public/art/                  2D 에셋 드롭 위치 (아래 참고)
 ```

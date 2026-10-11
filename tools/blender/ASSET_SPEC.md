@@ -163,4 +163,4 @@ everything about *how* a model is built may be redone from scratch for quality.
 - Shared helper modules (`common.py`, `char_helpers.py`, `rig_helpers.py`, `env_helpers.py`,
   `hp_helpers.py`, `creature_rig_helpers.py`, `enemy_rig_helpers.py`, `hero_rig_helpers.py`) are
   **read-only** for model work — put new helpers in your own module (e.g. `hp_<model>_helpers.py`).
-- The previous low-poly scripts/GLBs/previews are kept in `tools/blender/legacy_lowpoly/` for reference.
+- The previous low-poly scripts/GLBs/previews were removed; they remain in the git history (initial commit).

@@ -1,7 +1,7 @@
 """Landmark: the stopped clock tower (hi-poly pass 2026-10-11).
 
 "에테르 평원 · 멈춘 시계탑" — the signature landmark of the field. Concept (kept from the low-poly
-version, see legacy_lowpoly/previews/prop_clocktower.png): stone shaft, brass/copper clock stage with
+version, removed — see the initial commit's tools/blender/legacy_lowpoly/): stone shaft, brass/copper clock stage with
 four white faces, black hands, a faint glow_amber ring, patina roof with a lantern and a gear vane.
 
 Story details of this pass: the hands are frozen at 1:50 on every face; an aether-crystal overgrowth
