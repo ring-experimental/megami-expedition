@@ -1,7 +1,8 @@
 # Asset Spec — Megami Expedition (prototype)
 
 Theme: **steampunk + magic** (brass/copper/iron machinery, steam, leather & cloth, glowing aether crystals and runes).
-Style: **low-poly stylized**, flat shaded, chunky readable silhouettes, slightly cute proportions (big heads/hands OK).
+Style: stylized, chunky readable silhouettes, slightly cute proportions (big heads/hands OK).
+Heroes **kai / lyra**: low-poly, flat shaded. **Every other model**: hi-poly, smooth shading with hard edges (see *Build quality*).
 Everything is built by Python scripts in `tools/blender/` using `common.py` and exported to `public/models/*.glb`.
 
 ## Global conventions (MUST follow — game code depends on them)
@@ -11,12 +12,12 @@ Everything is built by Python scripts in `tools/blender/` using `common.py` and 
 - Character's **right side is −X**, left side is +X.
 - Model origin = ground contact point, centered (feet on z = 0). Flying models also have root at ground (z = 0) and their body floats above.
 - Each file has a single top-level empty named `root` at (0,0,0) (props.glb is the exception, see below).
-- **Animated parts are separate objects whose origin is at the joint/pivot** (built with `Part(...).build(parent, loc=pivot)`; geometry is modeled relative to the pivot). The game animates them procedurally by rotating these nodes, so:
+- **Animated parts are built as separate objects whose origin is at the joint/pivot** (`Part(...).build(parent, loc=pivot)`; geometry modeled relative to the pivot). Rigged models then turn them into bones with `rig_from_parts` (RIG_SPEC.md). The game animates these nodes/bones procedurally by name, so:
   - limbs hang straight down from their pivot at rest (rest pose = standing, arms down at sides, slightly apart from the body),
   - names must match exactly (case-sensitive, ASCII, underscores only),
   - each part's rest rotation is (0,0,0) — put any visual tilt into the geometry, not the object rotation.
 - Materials: use `get_mat(name)` with palette names from `common.py`. Prefixes matter: `glow_*` = emissive (gets bloom), `jelly_*` = translucent. You may add new palette entries in your own script via `get_mat("name", hex="#rrggbb", ...)` — keep the prefix rules.
-- Budget: characters/enemies ≤ 3 000 tris, ordinary props ≤ 1 500, landmarks (clocktower, airship, arena) ≤ 8 000.
+- Triangle budgets: see *Build quality* below.
 - Always `render_preview(...)` and look at the PNG to check proportions / that parts are attached. Iterate until it reads well.
 
 ## Characters & enemies (one GLB each)
@@ -35,7 +36,7 @@ root (empty, 0,0,0)
    ├─ leg_L        pivot at left hip joint (+X), leg extends down to z=0, foot points −Y
    └─ leg_R        pivot at right hip joint (−X)
 ```
-Arms/legs are single rigid segments (no elbows/knees) — make them read nicely anyway (gloves, boots, cuffs).
+Elbows/knees (`forearm_*`, `shin_*`) and cloth/hair chains are added by the rig — see RIG_SPEC.md.
 
 1. **kai.glb** — protagonist, young steam-swordsman, ~1.75 m. Short messy brown hair, aviator goggles pushed up on forehead, navy long coat with brass buttons and coat tails, red scarf, leather gloves & boots, compact brass steam pack on his back (two small chimneys) with an empty **`steam_point`** at a chimney top (child of torso).
    `weapon`: steam greatsword, ~1.2 m blade. **With the arm hanging down, the blade points forward (−Y)**, grip in the hand. Broad steel blade, brass guard with a small piston on the blade's spine, a thin `glow_cyan` rune line along the blade.
@@ -106,10 +107,10 @@ Every prop is a **top-level object (or top-level empty with children) named exac
 | `prop_pipe_arch` | steam pipe arching over the ground like an inverted U (walk-under) | 6 m wide, 4 m tall |
 | `prop_vent` | iron grate steam vent on the ground (flat, ~1.2 m), with a small valve wheel | 0.3 m tall |
 | `prop_crystal` | cluster of aether crystals `glow_cyan` + `glow_violet`, on a rock base | 2 m tall |
-| `prop_rock_a`, `prop_rock_b` | stylized low-poly boulders (stone / stone_dark) | 1.5–2.5 m |
-| `prop_tree` | stylized tree, chunky faceted canopy (`leaf_teal`) | 5 m |
+| `prop_rock_a`, `prop_rock_b` | stylized boulders (stone / stone_dark) | 1.5–2.5 m |
+| `prop_tree` | stylized tree, chunky canopy (`leaf_teal`) | 5 m |
 | `prop_tree_b` | autumn variant (`leaf_autumn`), different silhouette | 4.5 m |
-| `prop_bush` | small faceted bush | 0.8 m |
+| `prop_bush` | small bush | 0.8 m |
 | `prop_gear_monument` | giant half-buried brass gear standing upright, mossy stone base | 5 m |
 | `prop_clocktower` | landmark clock tower: stone base, brass top, clock face (`white` + `black` hands, `glow_amber` ring), gear details | 18 m tall, ≤6 m wide |
 | `prop_airship` | small airship (balloon + gondola + propeller) — child **`propeller`** (spins around local Y) | 12 m long |
@@ -126,13 +127,12 @@ Battle arena, `root` empty at center. Circular platform ~**26 m diameter**, walk
 
 ---
 
-## Hi-poly pass (2026-10-11) — supersedes "low-poly / flat shaded" and the old tri budgets
+## Build quality (hi-poly)
 
-Applies to **every model except the heroes kai / lyra** (they stay low-poly, flat, unchanged).
-Concept, silhouette, palette identity, node names, pivots, skeletons and sizes above stay binding;
-everything about *how* a model is built may be redone from scratch for quality.
+Applies to **every model except the heroes kai / lyra** (low-poly, flat shaded, ≤ 3 100 tris).
+Concept, silhouette, palette identity, node names, pivots, skeletons and sizes above are binding.
 
-- **Shading: smooth + hard edges.** The game no longer forces `flatShading`; it uses the GLB normals.
+- **Shading: smooth + hard edges.** The game uses the GLB normals (no forced `flatShading`).
   Curved surfaces smooth, crisp metal edges via sharp edges (`hp_helpers.smooth_obj(obj, angle≈30–40)`),
   boxy silhouettes get real bevels (`hp_helpers.bevel_obj`) so edges catch highlights. Organic forms
   (jelly, leaves, rock) may use subdivision + noise displacement. Crystals/gems may stay faceted (`flat_obj`).
@@ -163,4 +163,3 @@ everything about *how* a model is built may be redone from scratch for quality.
 - Shared helper modules (`common.py`, `char_helpers.py`, `rig_helpers.py`, `env_helpers.py`,
   `hp_helpers.py`, `creature_rig_helpers.py`, `enemy_rig_helpers.py`, `hero_rig_helpers.py`) are
   **read-only** for model work — put new helpers in your own module (e.g. `hp_<model>_helpers.py`).
-- The previous low-poly scripts/GLBs/previews were removed; they remain in the git history (initial commit).

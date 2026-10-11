@@ -54,8 +54,8 @@ PARENTS = {
     "wisp": {"lantern": "root", "flame": "lantern", "ring_A": "lantern", "wing_L": "lantern",
              "wing_R": "lantern"},
 }
-# heroes (low-poly, unchanged) get a little extra for the round elbow/knee joint caps;
-# enemies use the hi-poly "medium" tier budgets (2026-10-11, see ASSET_SPEC.md "Hi-poly pass")
+# heroes (low-poly) get a little extra for the round elbow/knee joint caps;
+# enemies use the hi-poly "medium" tier budgets (see ASSET_SPEC.md "Build quality")
 BUDGET = {"kai": 3100, "lyra": 3100, "cograt": 10000, "slime": 8000, "wisp": 10000, "beetle": 20000,
           "knight": 25000, "golem": 30000}
 ALL = ["kai", "lyra", "knight", "cograt", "slime", "beetle", "wisp", "golem"]

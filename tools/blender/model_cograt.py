@@ -1,5 +1,5 @@
-"""Cog Rat — weak, timid clockwork rat enemy (~0.45 m body height, ~0.8 m long). Hi-poly pass
-(2026-10-11, ASSET_SPEC.md "Hi-poly pass"). Exports public/models/cograt.glb.
+"""Cog Rat — weak, timid clockwork rat enemy (~0.45 m body height, ~0.8 m long). Hi-poly
+(ASSET_SPEC.md "Build quality"). Exports public/models/cograt.glb.
 
 Skeleton (RIG_SPEC.md), armature object 'root':
   body (root bone) > head > {ear_L, ear_R}

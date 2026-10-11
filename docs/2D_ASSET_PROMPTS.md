@@ -26,9 +26,9 @@
 ## 1. 공통 규칙
 
 ### 아트 디렉션
-- 게임 속 3D 모델은 **로우폴리 + 큰 머리의 귀여운(치비) 비율**입니다. 2D는 같은 캐릭터를 그린 **일러스트 버전**으로, *애니메풍 JRPG 일러스트 + 셀 셰이딩 + 부드러운 회화풍 조명*을 기준으로 합니다.
+- 게임 속 3D 모델은 **큰 머리의 귀여운(치비) 비율**입니다 (주인공 카이·리라는 로우폴리, 몬스터는 매끈한 하이폴리). 2D는 같은 캐릭터를 그린 **일러스트 버전**으로, *애니메풍 JRPG 일러스트 + 셀 셰이딩 + 부드러운 회화풍 조명*을 기준으로 합니다.
 - 색 기조: **놋쇠·구리·철·가죽(따뜻한 금갈색)** + **마법광(시안 `#5ff3ff`, 보라 `#b77bff`, 호박색 `#ffb347`)**.
-- **3D 모델 미리보기를 레퍼런스 이미지로 첨부하면 일치도가 크게 올라갑니다.** → `tools/blender/previews/` 의 `kai_face.png`, `lyra_face.png`, `cograt.png`, `slime.png`, `wisp.png`, `beetle.png`, `knight_front.png`, `golem.png`
+- **3D 모델 미리보기를 레퍼런스 이미지로 첨부하면 일치도가 크게 올라갑니다.** → `tools/blender/previews/` (로컬에서 `npm run models`로 생성, git 미포함) 의 `kai_face.png`, `lyra_face.png`, `cograt.png`, `slime.png`, `wisp.png`, `beetle.png`, `knight_front.png`, `golem.png`
 
 ### 해상도 · 배경
 | 종류 | 생성 크기 | 저장 크기 | 배경 |

@@ -1,4 +1,4 @@
-"""Arena-only helpers (hi-poly pass, 2026-10): flush floor geometry built from chamfered pieces,
+"""Arena-only helpers (hi-poly): flush floor geometry built from chamfered pieces,
 per-vertex tint plumbing, mesh joining and game-camera EEVEE previews.
 
 Everything adds geometry straight into a common.Part (part.bm / part.mat_names) — winding is built

@@ -1,4 +1,4 @@
-"""Brass Beetle only — geometry / rig / AO helpers for the hi-poly pass (model_beetle.py).
+"""Brass Beetle only — geometry / rig / AO helpers for the hi-poly model (model_beetle.py).
 
 Own module (shared helpers common.py / char_helpers.py / hp_helpers.py ... stay read-only).
 All builders add geometry to a common.Part in WORLD coordinates; `BoneBuilder` shifts the

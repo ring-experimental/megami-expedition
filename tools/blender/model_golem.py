@@ -7,8 +7,8 @@ Part hierarchy (rig_from_parts turns every mesh part into a bone of the same nam
   root > hips > {torso > {head, arm_L > forearm_L, arm_R > forearm_R, core, chimney > (steam_point)},
                  leg_L > shin_L, leg_R > shin_R}
   (parenthesised = rigid attachment / marker, not skinned)
-Faces -Y, character's right = -X, feet on z = 0, fists hang down to ~z = 0.4. Pivots identical to the
-low-poly version (game tuning depends on them).
+Faces -Y, character's right = -X, feet on z = 0, fists hang down to ~z = 0.4. Pivots are fixed
+(game tuning depends on them).
 
 Construction: riveted iron boiler body built from smooth superellipse lofts (hp_golem_helpers.Surf)
 with raised plate courses, brass bands, lap seams, rivet rows and a weld bead modelled as geometry.
@@ -50,7 +50,7 @@ get_mat(GOLD, hex="#ffd35c", metallic=1.0, roughness=0.22)
 for _m in (BRASS, BRASS_D, COPPER, STEEL, GLOW, BLACK, WHITE):
     get_mat(_m)
 
-# ---- pivots (same as the low-poly golem) -------------------------------------------------------------
+# ---- pivots (game tuning depends on them) -------------------------------------------------------------
 HIP_Z = 1.30
 LEG = (0.36, 0.0, -0.18)          # hip joint relative to hips
 WAIST = 0.12                      # torso pivot above hips

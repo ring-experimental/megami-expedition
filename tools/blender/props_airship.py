@@ -1,8 +1,8 @@
-"""Landmark: small airship circling over the field — hi-poly pass (2026-10-11).
+"""Landmark: small airship circling over the field (hi-poly).
 
 Builders for props.glb (assembled by model_props.py). The builder returns the top-level EMPTY
-`prop_airship` (origin at its base centre, z = 0; the airship floats above it exactly like the legacy
-low-poly one: envelope axis at z = 8.2). Nose toward -Y, ~12 m long.
+`prop_airship` (origin at its base centre, z = 0; the airship floats above it:
+envelope axis at z = 8.2). Nose toward -Y, ~12 m long.
 
     prop_airship (empty)
     ├─ prop_airship_body   every static part (envelope, fins, rigging, gondola, engine, duct) — one mesh
@@ -57,7 +57,7 @@ def setup_mats():
 # ---------------------------------------------------------------------------
 # envelope geometry
 # ---------------------------------------------------------------------------
-ENV_Z = 8.2                                  # envelope axis height (legacy)
+ENV_Z = 8.2                                  # envelope axis height (game framing depends on it)
 Y_NOSE, Y_MID0, Y_MID1, Y_TAIL = -5.72, -1.30, 0.86, 6.05
 R_MAX = 2.36
 GORES, PER_GORE = 12, 5

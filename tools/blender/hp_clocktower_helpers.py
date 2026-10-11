@@ -1,4 +1,4 @@
-"""Geometry kit for the stopped clock tower (props_clocktower.py) — hi-poly pass 2026-10.
+"""Geometry kit for the stopped clock tower (props_clocktower.py) (hi-poly).
 
 Everything adds geometry straight into a common.Part's bmesh (like env_helpers) but takes an explicit
 4x4 matrix M instead of loc/rot so whole facades can be modeled once in a *face-local frame* and

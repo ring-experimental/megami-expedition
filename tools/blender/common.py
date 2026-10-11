@@ -1,4 +1,4 @@
-"""Shared helpers for building low-poly stylized models in Blender (5.x) and exporting GLB.
+"""Shared helpers for building stylized models in Blender (5.x) and exporting GLB.
 
 Usage (headless):
     blender -b --factory-startup -P tools/blender/<model>.py

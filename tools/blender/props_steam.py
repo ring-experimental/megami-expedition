@@ -3,7 +3,7 @@
 Builders for props.glb (assembled by model_props.py). Each builder returns the prop's top-level
 object named exactly as in ASSET_SPEC.md, origin at its base centre on the ground (z = 0).
 
-Hi-poly pass (2026-10-11): everything is rebuilt from lathed profiles, chamfered extrusions and sweeps
+Hi-poly: built from lathed profiles, chamfered extrusions and sweeps
 (hp_steam_helpers.py) — chamfers are modelled, not bevel-modifier generated, so triangle counts stay
 predictable. Each builder ends with _finish(): smooth shading + sharp edges (35 deg) and vertex AO
 (hp.bake_tree_ao, optional tint for grime / verdigris). Child meshes are prefixed with the prop name.

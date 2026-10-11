@@ -1,4 +1,4 @@
-"""Brass Beetle — armored medium enemy (~0.75 m tall, ~1.3 m long). Hi-poly pass (2026-10-11).
+"""Brass Beetle — armored medium enemy (~0.75 m tall, ~1.3 m long). Hi-poly.
 Exports public/models/beetle.glb.
 
 Skeleton (RIG_SPEC.md), armature object 'root':

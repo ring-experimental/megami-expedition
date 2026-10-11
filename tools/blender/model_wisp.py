@@ -1,4 +1,4 @@
-"""Lamp Wisp (hi-poly pass, 2026-10) — floating magical enemy. Exports public/models/wisp.glb.
+"""Lamp Wisp (hi-poly) — floating magical enemy. Exports public/models/wisp.glb.
 
     root (ground, 0,0,0)
     └─ lantern        pivot at lantern centre, z = 1.3   (Victorian hex lantern: base, glass cage,

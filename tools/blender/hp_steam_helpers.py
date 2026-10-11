@@ -1,4 +1,4 @@
-"""Geometry helpers for the steam-works props (props_steam.py) — hi-poly pass 2026-10-11.
+"""Geometry helpers for the steam-works props (props_steam.py) (hi-poly).
 
 Own module: the shared helper modules (common / env_helpers / hp_helpers ...) are read-only.
 Everything here adds geometry straight into a common.Part's bmesh (same idea as env_helpers), so a

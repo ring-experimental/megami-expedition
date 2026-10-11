@@ -1,7 +1,7 @@
 """Hi-poly helpers (2026-10 quality pass) — smooth shading, bevel / subdivision, vertex-colour AO,
 vertex-colour aware GLB export and EEVEE previews. Builds on common.py WITHOUT modifying it.
 
-Shading convention for the hi-poly models (game side: core/assets.ts no longer forces flatShading,
+Shading convention for the hi-poly models (game side: core/assets.ts does not force flatShading,
 it uses the normals stored in the GLB):
     * curved surfaces are smooth-shaded, hard metal edges stay crisp via sharp edges (smooth by angle)
     * silhouettes that would read as "boxy" get a real bevel (bevel_obj) before smoothing

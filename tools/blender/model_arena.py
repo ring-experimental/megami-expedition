@@ -1,4 +1,4 @@
-"""arena.glb — hi-poly circular battle arena (see ASSET_SPEC.md "arena.glb" + "Hi-poly pass").
+"""arena.glb — hi-poly circular battle arena (see ASSET_SPEC.md "arena.glb" + "Build quality").
 
 Contract: single top-level empty `root` at the origin; node `arena_platform` = the walkable floor whose
 mesh never rises above z = 0 (flush inlays, every groove/chamfer goes down). Central r <= 9 m is flat.

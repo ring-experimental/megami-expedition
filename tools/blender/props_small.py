@@ -1,4 +1,4 @@
-"""Small interactables: rest-point beacon, treasure chest, crate, barrel, signpost (hi-poly pass).
+"""Small interactables: rest-point beacon, treasure chest, crate, barrel, signpost (hi-poly).
 
 Builders for props.glb (assembled by model_props.py). Each builder returns the prop's top-level
 object named exactly as in ASSET_SPEC.md, origin at its base centre on the ground (z = 0).

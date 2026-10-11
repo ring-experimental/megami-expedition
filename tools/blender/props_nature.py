@@ -1,4 +1,4 @@
-"""Nature props: aether crystals, boulders, trees, bush  (hi-poly pass 2026-10-11).
+"""Nature props: aether crystals, boulders, trees, bush  (hi-poly).
 
 Builders for props.glb (assembled by model_props.py). Each builder returns the prop's top-level
 object named exactly as in ASSET_SPEC.md, origin at its base centre on the ground (z = 0).

@@ -1,4 +1,4 @@
-"""Boiler Jelly — weak slime enemy (~0.6 m jelly + 0.25 m valve). Hi-poly pass (2026-10-11).
+"""Boiler Jelly — weak slime enemy (~0.6 m jelly + 0.25 m valve). Hi-poly.
 Exports public/models/slime.glb.
 
     root

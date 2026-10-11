@@ -1,12 +1,12 @@
-"""Clockwork Knight — strong enemy (~2.1 m). Hi-poly pass (2026-10-11).
+"""Clockwork Knight — strong enemy (~2.1 m). Hi-poly.
 Exports public/models/knight.glb (skinned, RIG_SPEC.md) + previews tools/blender/previews/knight*.png.
 
 Part hierarchy built here (rig_from_parts turns every mesh part into a bone of the same name):
   root > hips > {torso > {head, arm_L > forearm_L > (shield), arm_R > forearm_R > (weapon), (key)},
                  leg_L > shin_L, leg_R > shin_R, tabard_F_1 > tabard_F_2, tabard_B_1 > tabard_B_2}
   (parenthesised = rigid attachments, not skinned)
-Faces -Y, character's right = -X. Halberd shaft along +Z from the right hand (same pivot/offset as the
-low-poly version). key: sticks out of the back along +Y and spins around its local Y axis.
+Faces -Y, character's right = -X. Halberd shaft along +Z from the right hand (fixed pivot/offset,
+game tuning depends on it). key: sticks out of the back along +Y and spins around its local Y axis.
 
 Joints are mechanical (rigid weights): shoulders/elbows/knees are gunmetal ball joints with brass
 gears on the hinge axis, couters/poleyns sit on the parent segment so the bend stays covered.
@@ -64,7 +64,7 @@ ELBOW = -0.44        # arm-local, centre of the elbow ball
 KNEE = -0.47         # leg-local, centre of the knee ball
 TABARD_TOP = 0.02    # hips-local z of the tabard hinge (under the belt)
 TABARD_SEAM = -0.28  # hips-local z where tabard_*_1 ends and tabard_*_2 starts (mid-thigh)
-SX, SY = -0.10, -0.18  # halberd shaft offset from the right hand pivot (unchanged from legacy)
+SX, SY = -0.10, -0.18  # halberd shaft offset from the right hand pivot
 SMOOTH_ANGLE = 48.0    # > 45 so single-segment chamfers blend (with weighted normals) like rounded edges
 
 PARTS = []
