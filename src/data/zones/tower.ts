@@ -12,7 +12,7 @@ export const TOWER: ZoneDef = {
   skyVariants: [{ flag: 'ch1_boss_done', sky: { top: '#9ec4e8', horizon: '#d8b46a', fog: '#5a4a38', sunInt: 2.4 } }],
   terrain: {
     roads: [],
-    plazas: [{ x: 0, z: 26, r: 22, rings: [8, 16] }, { x: 0, z: -36, r: 18, rings: [7, 13] }],
+    plazas: [{ x: 0, z: 26, r: 22 }, { x: 0, z: -36, r: 18 }],
     hills: 0.05,
     edge: [70, 90],
     seed: 41,
@@ -22,7 +22,7 @@ export const TOWER: ZoneDef = {
   },
   start: { x: 0, z: 42, rot: Math.PI },
   props: [
-    { name: 'prop_drive_shaft', x: 0, z: 22, rot: 0, colliders: [{ x: 0, z: 0, r: 1.6 }] },
+    { name: 'prop_drive_shaft', x: 0, z: 22, rot: 0, colliders: [{ x: 0, z: 0, r: 1.95 }, { x: -0.8, z: 2.15, r: 0.45 }, { x: 0.8, z: 2.15, r: 0.45 }], spin: 'rotor' },
     { name: 'prop_gear_monument', x: -16, z: 40, rot: 0.4, colliders: [{ x: -2.3, z: 0, r: 1.65 }, { x: -0.8, z: 0, r: 1.6 }, { x: 0.8, z: 0, r: 1.6 }, { x: 2.3, z: 0, r: 1.65 }] },
     { name: 'prop_gear_monument', x: 13, z: 13, rot: -0.8, colliders: [{ x: -2.3, z: 0, r: 1.65 }, { x: -0.8, z: 0, r: 1.6 }, { x: 0.8, z: 0, r: 1.6 }, { x: 2.3, z: 0, r: 1.65 }] },
     { name: 'prop_pipe', x: -21, z: 26, rot: Math.PI / 2, colliders: pipeCols },

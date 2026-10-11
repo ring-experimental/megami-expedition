@@ -6,8 +6,8 @@ const F = (id: string) => !!State.current.flag(id);
 const night = () => F('night');
 
 /** house footprint ≈ 7 × 6 m (front +Z): four circles */
-const HOUSE: Circle[] = [{ x: -2, z: -1.4, r: 2.3 }, { x: 2, z: -1.4, r: 2.3 }, { x: -2, z: 1.2, r: 2.1 }, { x: 2, z: 1.2, r: 2.1 }];
-const LOCO: Circle[] = [-5.6, -2.8, 0, 2.8, 5.6].map((x) => ({ x, z: 0, r: 1.6 }));
+const HOUSE: Circle[] = [-2.15, 0, 2.15].flatMap((x) => [{ x, z: -1.3, r: 1.6 }, { x, z: 1.3, r: 1.6 }]);
+const LOCO: Circle[] = [-5.5, -2.75, 0, 2.75, 5.5].map((x) => ({ x, z: 0, r: 1.9 }));
 const lamp = (x: number, z: number, lightFlag?: string): PropPlacement => ({ name: 'prop_lamp', x, z, colliders: [{ x: 0, z: 0, r: 0.35 }], light: '#ffcf7a', lightFlag });
 const fence = (x: number, z: number, rot = 0): PropPlacement => ({ name: 'prop_fence', x, z, rot, colliders: [{ x: -0.8, z: 0, r: 0.3 }, { x: 0, z: 0, r: 0.3 }, { x: 0.8, z: 0, r: 0.3 }] });
 
@@ -33,10 +33,10 @@ export const STATION: ZoneDef = {
     { name: 'prop_rest', x: 8, z: 6, colliders: [{ x: 0, z: 0, r: 1.1 }] },
     { name: 'prop_locomotive', x: 0, z: -6, rot: 0, colliders: LOCO, steam: true, steamY: 5 },
     { name: 'prop_house', x: -20, z: -20, rot: 0.3, colliders: HOUSE },  // 집배대 지부
-    { name: 'prop_nail_board', x: -13, z: -16, rot: 0.3, colliders: [{ x: 0, z: 0, r: 0.9 }] },
+    { name: 'prop_nail_board', x: -13, z: -16, rot: 0.3, colliders: [{ x: -0.75, z: 0, r: 0.55 }, { x: 0, z: 0, r: 0.55 }, { x: 0.75, z: 0, r: 0.55 }] },
     { name: 'prop_house', x: 20, z: -20, rot: -0.3, colliders: HOUSE },  // 상점 「톱니와 저울」
     { name: 'prop_house', x: -24, z: 10, rot: 1.2, colliders: HOUSE },   // 공방 「오르간 둥지」
-    { name: 'prop_organ', x: -17, z: 12, rot: 1.2, colliders: [{ x: 0, z: 0, r: 1.2 }] },
+    { name: 'prop_organ', x: -17, z: 12, rot: 1.2, colliders: [{ x: -0.45, z: 0, r: 0.75 }, { x: 0.45, z: 0, r: 0.75 }] },
     { name: 'prop_house', x: 22, z: 12, rot: -1.2, colliders: HOUSE },   // 여관 「김 서린 주전자」
     { name: 'prop_house', x: 0, z: -30, rot: 0, colliders: HOUSE },      // 역사 (잠김)
     { name: 'prop_house', x: -12, z: 30, rot: 2.6, colliders: HOUSE },   // 포피네 집
@@ -73,7 +73,7 @@ export const STATION: ZoneDef = {
     { id: 'poppy', name: '포피', x: -12, z: 26, rot: 0.2, model: 'npc_poppy', color: '#c8283a', when: night },
     { id: 'shopkeeper', name: '상점 주인', x: 20, z: -14.5, rot: 3.0, model: 'npc_shopkeeper', color: '#6a4a30' },
     // m08: the 녹청 연대 messenger on Kanna's roof
-    { id: 'verdi', name: '베르디', x: 0, z: -6, y: 4.6, rot: Math.PI, model: 'wisp', color: '#5e7a5a', when: night, silent: true },
+    { id: 'verdi', name: '베르디', x: -2, z: -6, y: 4.2, rot: Math.PI, model: 'wisp', color: '#5e7a5a', when: night, silent: true },
   ],
   spots: [
     { id: 'nail_board', x: -13, z: -15, r: 2.4, label: '못판 보기 <span class="dim">(집배대 의뢰)</span>', afterFlag: 'ch1_hub_arrived' },

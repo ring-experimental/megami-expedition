@@ -31,7 +31,7 @@ export const WORKS: ZoneDef = {
     { name: 'prop_pipe', x: -24, z: 22, rot: 0.8, colliders: pipeCols }, { name: 'prop_pipe', x: -28, z: -20, rot: 1.4, colliders: pipeCols },
     { name: 'prop_pipe_arch', x: 38, z: 0, rot: Math.PI / 2, colliders: archCols }, { name: 'prop_pipe_arch', x: -34, z: 0, rot: Math.PI / 2, colliders: archCols },
     box('prop_crate', 52, -8, 0.3), box('prop_crate', 54, -6.4, 1), box('prop_crate', 56, 12, 0.2), box('prop_barrel', 46, 24), box('prop_barrel', -40, 14), box('prop_barrel', 47, 25.2),
-    { name: 'prop_drive_shaft', x: -60, z: 0, rot: Math.PI / 2, scale: 0.4, colliders: [{ x: 0, z: 0, r: 0.9 }] },
+    { name: 'prop_drive_shaft', x: -60, z: 0, rot: Math.PI / 2, scale: 0.4, colliders: [{ x: 0, z: 0, r: 2.5 }] },
     { name: 'prop_rest', x: 18, z: 12, colliders: [{ x: 0, z: 0, r: 1.1 }] },
     { name: 'prop_lamp', x: 60, z: -5, colliders: [{ x: 0, z: 0, r: 0.35 }], light: '#ffb060' },
     { name: 'prop_lamp', x: 60, z: 5, colliders: [{ x: 0, z: 0, r: 0.35 }], light: '#ffb060' },

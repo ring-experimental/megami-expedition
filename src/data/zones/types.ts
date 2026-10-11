@@ -1,7 +1,7 @@
 /** Zone data: everything FieldMode needs to build one area. three.js coords: x east, z south. */
 
 export interface Circle { x: number; z: number; r: number }
-export interface PropPlacement { name: string; x: number; z: number; rot?: number; scale?: number; y?: number; colliders?: Circle[]; steam?: boolean; light?: string; /** lamp lit only once this flag is set */ lightFlag?: string; /** steam vent height above ground */ steamY?: number; /** placed only while flags allow */ afterFlag?: string; untilFlag?: string }
+export interface PropPlacement { name: string; x: number; z: number; rot?: number; scale?: number; y?: number; colliders?: Circle[]; steam?: boolean; light?: string; /** lamp lit only once this flag is set */ lightFlag?: string; /** steam vent height above ground */ steamY?: number; /** child node that turns slowly around Y (drive shaft rotor) */ spin?: string; /** placed only while flags allow */ afterFlag?: string; untilFlag?: string }
 export interface ChestDef { id: string; x: number; z: number; rot: number; items: Record<string, number>; money: number; parts?: Record<string, number>; crystals?: Record<string, number>; /** opening sets this story flag (key items) */ flag?: string; flagText?: string; afterFlag?: string }
 export interface SpawnDef {
   id: string; x: number; z: number; formation: string[]; wander: number;

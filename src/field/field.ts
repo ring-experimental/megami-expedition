@@ -56,6 +56,7 @@ export class FieldMode {
   private zoneLights: FakeLight[] = [];
   private gateFx: { g: GateDef; t: number }[] = [];
   /** lamps that light up with a story flag (m01's gas lamps) */
+  private spinners: THREE.Object3D[] = [];
   private flagLights: { l: FakeLight; flag: string; on: number; glass: THREE.MeshStandardMaterial[]; glow: number[] }[] = [];
   /** scripted camera: look from `pos` at `look` until `until` (field time) */
   private cine: { pos: THREE.Vector3; look: THREE.Vector3; until: number } | null = null;
@@ -227,6 +228,7 @@ export class FieldMode {
     this.colliders = [];
     this.gateFx = [];
     this.flagLights = [];
+    this.spinners = [];
     this.rests = [];
     this.airship = this.propeller = null;
     this.fx.clear();
@@ -297,7 +299,8 @@ export class FieldMode {
           glass.push(m.material as THREE.MeshStandardMaterial);
         });
       }
-      if (p.name === 'prop_rest' || p.lightFlag) { s.add(o); this.zoneObjs.push(o); }
+      if (p.spin) { const r = o.getObjectByName(p.spin); if (r) this.spinners.push(r); }
+      if (p.name === 'prop_rest' || p.lightFlag || p.spin) { s.add(o); this.zoneObjs.push(o); }
       else statics.push(o);
       const cos = Math.cos(p.rot ?? 0), sin = Math.sin(p.rot ?? 0), k = p.scale ?? 1;
       for (const c of p.colliders ?? []) {
@@ -760,6 +763,8 @@ export class FieldMode {
     }
     if (this.propeller) this.propeller.rotation.z = t * 12;
     for (const n of this.npcs) n.anim.update(dt);
+    // the revived drive shaft ticks round in steps, like a clock
+    for (const r of this.spinners) r.rotation.y = Math.floor(t * 2) * 0.12;
     // gate markers: a slow golden ring pulse on the ground
     for (const gf of this.gateFx) {
       gf.t -= dt;
