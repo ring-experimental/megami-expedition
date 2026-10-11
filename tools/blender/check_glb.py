@@ -29,6 +29,10 @@ RIGGED = {
     "npc_bail": {"bones": HUMANOID_BONES + ["coat_FL_1", "coat_FR_1", "coat_L_1", "coat_R_1"], "rigid": {"weapon": "forearm_R"}},
     "npc_poppy": {"bones": HUMANOID_BONES + ["scarf_1", "scarf_2"], "rigid": {"weapon": "forearm_R"}},
     "npc_shopkeeper": {"bones": HUMANOID_BONES + ["tabard_F_1", "tabard_F_2"], "rigid": {"weapon": "forearm_R"}},
+    "grand_carillon": {"bones": HUMANOID_BONES + ["needle", "brow_L", "brow_R", "tail_1", "tail_2", "tail_3"], "rigid": {"steam_point": None}},
+    "strongbox_tortoise": {"bones": ["body", "head", "horn", "shell_L", "shell_R", "dial"] +
+                                    [f"leg_{p}{s}{seg}" for p in "FMB" for s in "LR" for seg in ("", "_2")],
+                           "rigid": {"steam_point": "body"}},
     "golem": {"bones": HUMANOID_BONES,
               "rigid": {"steam_point": None}},
     "cograt": {"bones": ["body", "head", "ear_L", "ear_R", "tail_1", "tail_2", "tail_3", "tail_4",
@@ -52,6 +56,8 @@ BONE_PARENTS = {
 # --- Unrigged (rigid part) models ----------------------------------------------------------
 REQUIRED = {
     "slime": ["root", "body", "valve", "eye_L", "eye_R"],
+    "bellows_toad": ["root", "body", "valve", "eye_L", "eye_R"],
+    "prism_moth": ["root", "lantern", "flame", "ring_A", "wing_L", "wing_R"],
     "wisp": ["root", "lantern", "flame", "ring_A", "ring_B", "wing_L", "wing_R"],
 }
 PARENTS = {
@@ -61,9 +67,10 @@ PARENTS = {
 }
 # heroes (low-poly) get a little extra for the round elbow/knee joint caps;
 # enemies use the hi-poly "medium" tier budgets (see ASSET_SPEC.md "Build quality")
-BUDGET = {"kai": 3100, "lyra": 3100, "npc_marta": 3100, "npc_bail": 3100, "npc_poppy": 3100, "npc_shopkeeper": 3100, "cograt": 10000, "slime": 8000, "wisp": 10000, "beetle": 20000,
+BUDGET = {"prism_moth": 10000, "bellows_toad": 8000, "strongbox_tortoise": 25000, "grand_carillon": 30000, "kai": 3100, "lyra": 3100, "npc_marta": 3100, "npc_bail": 3100, "npc_poppy": 3100, "npc_shopkeeper": 3100, "cograt": 10000, "slime": 8000, "wisp": 10000, "beetle": 20000,
           "knight": 25000, "golem": 30000}
-ALL = ["kai", "lyra", "knight", "cograt", "slime", "beetle", "wisp", "golem"]
+ALL = ["kai", "lyra", "knight", "cograt", "slime", "beetle", "wisp", "golem",
+       "prism_moth", "bellows_toad", "strongbox_tortoise", "grand_carillon", "npc_marta", "npc_bail", "npc_poppy", "npc_shopkeeper"]
 # animated nodes whose rest rotation must be identity (unrigged models only)
 NO_ROT_EXEMPT = {"ring_B_tilt"}
 
@@ -162,6 +169,8 @@ def check(name):
 
 def main():
     targets = sys.argv[1:] or ALL
+    # model_npc.py builds all four NPCs in one run
+    targets = [t for n in targets for t in (["npc_marta", "npc_bail", "npc_poppy", "npc_shopkeeper"] if n == "npc" else [n])]
     ok_all = True
     for t in targets:
         try:

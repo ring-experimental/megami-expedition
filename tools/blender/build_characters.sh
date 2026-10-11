@@ -7,7 +7,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 BLENDER="${BLENDER:-/c/Program Files/Blender Foundation/Blender 5.2/blender.exe}"
 MODELS=("$@")
-[ ${#MODELS[@]} -eq 0 ] && MODELS=(kai lyra knight cograt slime beetle wisp golem)
+[ ${#MODELS[@]} -eq 0 ] && MODELS=(kai lyra knight cograt slime beetle wisp golem prism_moth bellows_toad strongbox_tortoise grand_carillon npc)
 
 cd "$ROOT" || exit 1
 fail=0

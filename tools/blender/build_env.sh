@@ -11,7 +11,7 @@ BLENDER="${BLENDER:-/c/Program Files/Blender Foundation/Blender 5.2/blender.exe}
 PY="${PYTHON:-python}"
 
 cd "$ROOT"
-for script in model_props.py model_arena.py; do
+for script in model_props.py model_props2.py model_arena.py; do
   echo "=== $script"
   log="$("$BLENDER" -b --factory-startup -P "tools/blender/$script" -- "$@" 2>&1)" || true
   echo "$log" | grep -E '^\[(tris|export|preview)\]' || true

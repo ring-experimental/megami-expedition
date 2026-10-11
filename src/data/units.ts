@@ -219,7 +219,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
       { id: 'belly_flop', name: '쿵 착지', kind: 'melee', element: 'phys', stat: 'atk', power: 0.8, hits: [0], windup: [1.1, 1.5], allTargets: true, jump: true, weight: 2 },
     ],
     allySkills: ['bellows_pump', 'ember_burp'], xp: 30, money: 34, drops: [{ item: 'tonic', chance: 0.3 }],
-    height: 0.9, radius: 0.7, color: '#a8643a',
+    height: 0.95, radius: 0.7, color: '#a8643a',
     talk: {
       greet: ['꾸르륵… 석탄 냄새가 나는데? 한 덩이만 주면 생각해 보지.'],
       greetBroken: ['풀무가… 바람이 샌다… 기어 하나만… 꾸르륵…'],
@@ -268,7 +268,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
       { id: 'rewind_spin', name: '역회전', kind: 'self', element: 'phys', stat: 'atk', power: 0, hits: [], windup: [0.5, 0.5], weight: 1, onceBelow: 0.4, heal: 0.12 },
     ],
     allySkills: ['noon_bell', 'peal_strike'], xp: 600, money: 300, drops: [{ item: 'heart', chance: 1 }, { item: 'hi_tonic', chance: 1 }],
-    height: 4.2, radius: 2.0, hover: 0.6, color: '#b08d3c',
+    height: 4.2, radius: 2.0, color: '#b08d3c',
     talk: {
       greet: ['…누구냐. 아무도 올라오지 않는 곳인데.', '또 고치러 왔나. 고칠 데는 없다. 그냥… 조용할 뿐이다.'],
       greetBroken: ['…멈췄군. 이대로 멈추는 것도, 나쁘지 않다.'],
