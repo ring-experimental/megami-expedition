@@ -13,15 +13,16 @@ import './title.css';
 /** Optional art file or the SVG placeholder. */
 const img = (src: string | null, fallback: string) => (src ? `<img src="${src}" alt="" draggable="false">` : fallback);
 import { State, type Member } from '../game/state';
+import { Save, MANUAL_SLOTS, SLOT_NAME, formatDate, formatPlayTime, partyLine, type SlotId } from '../game/save';
 import { Graphics, QUALITY, type Quality } from '../game/graphics';
 import type { Game } from '../game/game';
-import { DIFFICULTY, ELEMENT_NAME, type Difficulty, type Element } from '../data/types';
+import { BATTLE_SPEEDS, DIFFICULTY, ELEMENT_NAME, type Difficulty, type Element } from '../data/types';
 import { HEROES, SPECIES, xpToNext } from '../data/units';
 import { SKILLS } from '../data/skills';
 import { ITEMS } from '../data/items';
 import { PERSONALITIES } from '../data/negotiation';
 
-const PAUSE_TABS: [string, string][] = [['party', '파티 편성'], ['bestiary', '몬스터 도감'], ['items', '소지품'], ['settings', '설정'], ['controls', '조작법']];
+const PAUSE_TABS: [string, string][] = [['party', '파티 편성'], ['bestiary', '몬스터 도감'], ['items', '소지품'], ['save', '저장 · 불러오기'], ['settings', '설정'], ['controls', '조작법']];
 
 export class Menus {
   private title: HTMLElement | null = null;
@@ -79,9 +80,16 @@ export class Menus {
       this.nav.reset();
       menu.className = 'ts-menu';
       menu.innerHTML = '';
-      const b1 = el('button', 'mn-btn big', '새 게임', menu);
+      const latest = Save.latest();
+      if (latest) {
+        const c = el('button', 'mn-btn big', '이어하기', menu);
+        c.dataset.padFirst = '';
+        c.onclick = () => { Sfx.unlock(); Sfx.play('ui_ok'); void this.game.loadSlot(latest); };
+      }
+      const b1 = el('button', `mn-btn${latest ? '' : ' big'}`, '새 게임', menu);
+      if (!latest) b1.dataset.padFirst = '';
+      if (latest) { const bl = el('button', 'mn-btn', '불러오기', menu); bl.onclick = () => { Sfx.unlock(); Sfx.play('ui_ok'); load(); }; }
       const b2 = el('button', 'mn-btn', '조작법', menu);
-      b1.dataset.padFirst = '';
       b1.onclick = () => { Sfx.unlock(); Sfx.play('ui_ok'); diff(); };
       b2.onclick = () => { Sfx.unlock(); Sfx.play('ui_ok'); help(); };
     };
@@ -104,6 +112,14 @@ export class Menus {
           this.game.newGame(k);
         };
       });
+      back();
+    };
+    const load = () => {
+      this.nav.reset();
+      menu.className = 'ts-menu wide';
+      menu.innerHTML = '<div class="ts-q"><span>불러오기</span><small>저장한 지점에서 이어서 시작합니다</small></div>';
+      const box = el('div', 'sv-list ts-saves', undefined, menu);
+      this.slotList(box, 'load', (slot) => { void this.game.loadSlot(slot); });
       back();
     };
     const help = () => {
@@ -201,7 +217,7 @@ export class Menus {
       // two-step confirm instead of window.confirm(), which a gamepad cannot answer
       if (!titleBtn.classList.contains('armed')) {
         titleBtn.classList.add('armed');
-        titleBtn.textContent = '한 번 더 누르면 타이틀로 (저장 안 됨)';
+        titleBtn.textContent = '한 번 더 누르면 타이틀로 (마지막 저장 이후 진행은 사라짐)';
         Sfx.play('ui_error');
         setTimeout(() => { titleBtn.classList.remove('armed'); titleBtn.textContent = '타이틀로'; }, 3000);
         return;
@@ -238,6 +254,7 @@ export class Menus {
     if (this.tab === 'party') this.renderParty(body);
     else if (this.tab === 'bestiary') this.renderBestiary(body);
     else if (this.tab === 'items') this.renderItems(body);
+    else if (this.tab === 'save') this.renderSave(body);
     else if (this.tab === 'settings') this.renderSettings(body);
     else this.renderControls(body);
   }
@@ -375,6 +392,47 @@ export class Menus {
     if (first) show(first[0], first[1]);
   }
 
+  /**
+   * Save slot cards. 'save' mode shows the quicksave + three manual slots (the autosave is read-only),
+   * 'load' mode shows every slot that has data. A filled slot asks once more before it is overwritten.
+   */
+  private slotList(box: HTMLElement, mode: 'save' | 'load', pick: (slot: SlotId) => void) {
+    const slots: SlotId[] = mode === 'save' ? ['quick', ...MANUAL_SLOTS] : ['auto', 'quick', ...MANUAL_SLOTS];
+    let first = true;
+    for (const slot of slots) {
+      const h = Save.header(slot);
+      if (mode === 'load' && !h) continue;
+      const card = el('button', `sv-slot${h ? '' : ' empty'}`, h
+        ? `<div class="sv-name">${SLOT_NAME[slot]}</div><div class="sv-place">${h.chapter} · ${h.place}</div>
+           <div class="sv-party">${partyLine(h)}</div>
+           <div class="sv-meta"><span>⚙ ${h.money}</span><span>플레이 ${formatPlayTime(h.playTime)}</span><span>${formatDate(h.savedAt)}</span></div>`
+        : `<div class="sv-name">${SLOT_NAME[slot]}</div><div class="sv-place dim">비어 있음</div>`, box);
+      if (first) { card.dataset.padFirst = ''; first = false; }
+      card.onclick = () => {
+        if (mode === 'save' && h && !card.classList.contains('armed')) {
+          card.classList.add('armed');
+          card.querySelector('.sv-name')!.innerHTML = `${SLOT_NAME[slot]} <span class="sv-warn">한 번 더 누르면 덮어씁니다</span>`;
+          Sfx.play('ui_error');
+          setTimeout(() => { if (card.isConnected) { card.classList.remove('armed'); card.querySelector('.sv-name')!.textContent = SLOT_NAME[slot]; } }, 3000);
+          return;
+        }
+        Sfx.play('ui_ok');
+        pick(slot);
+      };
+    }
+    if (mode === 'load' && first) el('div', 'mn-note', '저장된 데이터가 없습니다.', box);
+  }
+
+  private renderSave(body: HTMLElement) {
+    bindInput(el('div', 'mn-note', '', body), (s) => `필드에서는 언제든 저장할 수 있습니다. 휴식 · 전투 승리 · 지역 이동 때 <b>자동 저장</b>됩니다.${s.device === 'pad' ? '' : ' 필드에서 <kbd>F5</kbd> 퀵세이브 · <kbd>F9</kbd> 퀵로드.'}`);
+    el('div', 'mn-sec', '저장', body);
+    const save = el('div', 'sv-list', undefined, body);
+    this.slotList(save, 'save', (slot) => { if (this.game.saveTo(slot)) this.renderPause(); });
+    el('div', 'mn-sec', '불러오기', body);
+    const load = el('div', 'sv-list', undefined, body);
+    this.slotList(load, 'load', (slot) => { void this.game.loadSlot(slot); });
+  }
+
   private renderItems(body: HTMLElement) {
     const list = el('div', 'it-list', undefined, body);
     const entries = Object.entries(State.current.inventory).filter(([, n]) => n > 0);
@@ -417,6 +475,8 @@ export class Menus {
     row('난이도', () => `<b>${DIFFICULTY[st.difficulty].name}</b>`, (d) => { st.difficulty = cycle(diffs, st.difficulty, d); },
       () => { const d = DIFFICULTY[st.difficulty]; return `${d.desc} · 패링 ±${Math.round(d.parry * 1000)}ms · 회피 ±${Math.round(d.dodge * 1000)}ms · 받는 피해 ×${d.enemyDmg}`; }).dataset.padFirst = '';
     row('패링 타이밍 링', () => toggle(st.showParryRing), () => { st.showParryRing = !st.showParryRing; }, () => '하드에서는 항상 숨김');
+    row('전투 배속', () => `<b>×${st.battleSpeed}</b>`, (d) => { st.battleSpeed = BATTLE_SPEEDS[(BATTLE_SPEEDS.indexOf(st.battleSpeed) + d + BATTLE_SPEEDS.length) % BATTLE_SPEEDS.length]; },
+      () => '연출만 빨라집니다. 패링 · 회피 · QTE 판정은 항상 ×1 (전투 중 Tab / Y로도 전환)');
     sec('소리 · 조작');
     row('효과음 볼륨', () => gauge(Sfx.volume, 0, 1, `${Math.round(Sfx.volume * 100)}%`), (d) => Sfx.setVolume(num(Sfx.volume, d, 0, 1, 0.1)));
     row('마우스 감도', () => gauge(st.mouseSens, 0.3, 2.5, `×${st.mouseSens.toFixed(1)}`), (d) => { st.mouseSens = num(st.mouseSens, d, 0.3, 2.5, 0.1); });

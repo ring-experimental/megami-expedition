@@ -22,7 +22,7 @@
 .mn-tab:hover::before, .mn-btn:hover::before, body.navfocus .mn-tab.pad-focus::before, body.navfocus .mn-btn.pad-focus::before { border-left-color: var(--gold-hi); }
 .mn-tab.on { transform: translateX(22px) scale(1.05); color: var(--ink-0); }
 .mn-tab.on::before { background: var(--gold-hi); border-left-color: var(--ink-0); }
-.mn-tabhint { display: flex; align-items: center; gap: 2px; margin: 4px 0 0 calc(5 * -8px + 48px); font: 400 13px var(--f-body); color: var(--bone-dim); }
+.mn-tabhint { display: flex; align-items: center; gap: 2px; margin: 4px 0 0 calc(6 * -8px + 48px); font: 400 13px var(--f-body); color: var(--bone-dim); }
 .mn-tabhint span { margin-left: 6px; }
 .mn-foot { left: 34px; bottom: 34px; display: flex; flex-direction: column; gap: 8px; }
 .mn-btn.small { height: 34px; width: 210px; font-size: 14px; color: var(--bone-dim); }
@@ -176,3 +176,20 @@ body.navfocus .pause-menu .pad-focus { outline: none; box-shadow: none; }
 .pt-slots.picking .pt-card.locked, .pt-mini.locked:not(.picked) { opacity: 0.4; cursor: default; }
 .pt-mini.picked { transform: translateX(8px); }
 .pt-mini.picked::before { border-left-color: var(--gold-hi); box-shadow: inset 0 0 0 2px var(--gold-hi); }
+
+/* ---------- save / load slots (machine language: brass plates in a column) ---------- */
+.sv-list { display: flex; flex-direction: column; gap: 8px; max-width: 640px; padding-left: 10px; }
+.sv-slot { position: relative; isolation: isolate; display: grid; grid-template-columns: 1fr auto; gap: 2px 18px; width: 100%; padding: 10px 26px 10px 22px; border: none; background: none; cursor: pointer; text-align: left;
+  color: var(--bone); font-family: var(--f-cmd); transition: transform 0.16s var(--ease-pop); }
+.sv-slot::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--ink-1); transform: skewX(-10deg); border-left: 3px solid var(--gold-dk); }
+.sv-slot:hover, body.navfocus .sv-slot.pad-focus { transform: translateX(8px); }
+.sv-slot:hover::before, body.navfocus .sv-slot.pad-focus::before { background: var(--gold-hi); border-left-color: var(--ink-0); }
+.sv-slot:hover *, body.navfocus .sv-slot.pad-focus * { color: var(--ink-0) !important; }
+.sv-slot.armed::before { border-left-color: var(--crimson); }
+.sv-name { grid-column: 1 / -1; font: 800 17px var(--f-cmd); }
+.sv-warn { margin-left: 10px; font: 700 13px var(--f-cmd); color: var(--crimson); }
+.sv-place { font: 400 13px var(--f-body); color: var(--bone); }
+.sv-party { grid-column: 1; font: 400 12px var(--f-body); color: var(--bone-dim); }
+.sv-meta { grid-column: 2; grid-row: 2 / 4; align-self: center; display: flex; flex-direction: column; align-items: flex-end; font: 700 12px var(--f-num); color: var(--gold); }
+.sv-slot.empty .sv-place { color: var(--bone-dim); }
+.ts-saves { width: min(640px, 100%); max-height: 56vh; overflow-y: auto; scrollbar-width: none; padding: 14px 18px; background: rgba(11, 9, 7, 0.88); }

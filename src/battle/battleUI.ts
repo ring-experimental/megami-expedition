@@ -49,7 +49,7 @@ const INK_SVG = '<svg viewBox="0 0 1000 150" preserveAspectRatio="none"><g fill=
 
 /** One member card on the victory screen (before/after are captured around State.giveXp). */
 export interface VictoryRow { pid: string; name: string; color: string; gain: number; reserve: boolean; fromLv: number; fromXp: number; toLv: number; toXp: number; newSkills: string[] }
-export interface VictoryData { xp: number; money: number; drops: string[]; recruited: string[]; rows: VictoryRow[] }
+export interface VictoryData { xp: number; money: number; drops: string[]; recruited: string[]; rows: VictoryRow[]; bonuses: { label: string; pct: number }[] }
 
 export interface MenuItem<T> { label: string; right?: string; desc?: string; disabled?: boolean; value: T; cls?: string }
 
@@ -100,6 +100,8 @@ export class BattleUI {
   /** Fixed spot for a blade list (defeat screen); null = sprout from the ring or default spot. */
   private bladeSpot: { x: number; y: number } | null = null;
   private defHint: HTMLElement;
+  private speedEl: HTMLElement;
+  private speed = 1;
   private arrow: HTMLElement;
   private dialog: HTMLElement;
   private ringLayer: HTMLElement;
@@ -139,6 +141,7 @@ export class BattleUI {
     this.defHint = bindInput(el('div', 'def-hint', '', this.root), (s) => s.device === 'pad'
       ? `<span>${pb('a')}/${pb('rb')} 패링</span><span>${pb('b')} 회피</span>`
       : '<span><kbd>F</kbd>/<kbd>좌클릭</kbd> 패링</span><span><kbd>Space</kbd>/<kbd>우클릭</kbd> 회피</span>');
+    this.speedEl = bindInput(el('div', 'battle-speed', '', this.root), (s) => `<b>${this.speed > 1 ? '▶▶' : '▶'} ×${this.speed}</b><span>${s.device === 'pad' ? pb('y') : '<kbd>Tab</kbd>'} 배속</span>`);
     this.arrow = el('div', 'target-arrow', img(artSrc('ui/target_blade'), BLADE_SVG), ui.layer);
     // textures used from CSS (ink blots behind moment words, ink grain on panels)
     for (const [file, cls] of [['ui/ink_splat', 'art-ink-splat'], ['ui/ink_texture', 'art-ink-tex']]) {
@@ -505,6 +508,13 @@ export class BattleUI {
     };
   }
 
+  /** Top-right speed plate; hidden at ×1 except for a key hint. */
+  setSpeed(k: number) {
+    this.speed = k;
+    this.speedEl.querySelector('b')!.textContent = `${k > 1 ? '▶▶' : '▶'} ×${k}`;
+    this.speedEl.classList.toggle('fast', k > 1);
+  }
+
   showDefHint(v: boolean) {
     this.defHint.style.display = v ? '' : 'none';
   }
@@ -711,7 +721,12 @@ export class BattleUI {
 
     // rewards stamp in one row at a time
     await wait(0.35);
-    const lines: string[] = [`<b>EXP</b><span class="num">${d.xp}</span>`, `<b>⚙ 기어</b><span class="num gear">0</span>`];
+    const lines: string[] = [];
+    if (d.bonuses.length) {
+      const total = d.bonuses.reduce((s, b) => s + b.pct, 0);
+      lines.push(`<b class="bonus">전술</b><span>×${(1 + total / 100).toFixed(1)} <small>${d.bonuses.map((b) => `${b.label} +${b.pct}%`).join(' · ')}</small></span>`);
+    }
+    lines.push(`<b>EXP</b><span class="num">${d.xp}</span>`, `<b>⚙ 기어</b><span class="num gear">0</span>`);
     for (const h of d.drops) lines.push(`<b>획득</b><span>${h}</span>`);
     for (const n of d.recruited) lines.push(`<b class="rec">영입</b><span>${n}</span>`);
     for (const html of lines) {

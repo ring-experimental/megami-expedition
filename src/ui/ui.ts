@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { el, worldToScreen } from '../core/utils';
 import type { InputState } from '../core/input';
 import { bindInput } from './glyph';
+import { gearSvg } from './ornaments';
 
 /** Shared DOM overlay helpers. */
 export class UI {
@@ -11,6 +12,8 @@ export class UI {
   topLayer: HTMLElement;   // banners / toasts / dialogs
   private fade: HTMLElement;
   private toasts: HTMLElement;
+  private saveInd: HTMLElement | null = null;
+  private saveIndT = 0;
   private anchored: { el: HTMLElement; pos: THREE.Vector3; t: number; dur: number; drift: number }[] = [];
   camera: THREE.Camera | null = null;
   width = window.innerWidth;
@@ -107,6 +110,18 @@ export class UI {
     const e = el('div', 'move-name ' + cls, text, this.topLayer);
     setTimeout(() => e.classList.add('out'), ms);
     setTimeout(() => e.remove(), ms + 400);
+  }
+
+  /** Bottom-right brass gear that turns while the game saves (autosave / quicksave). */
+  saving(text: string, ok = true) {
+    if (!this.saveInd) this.saveInd = el('div', 'save-ind', `<i>${gearSvg(10, 74, 62, 30)}</i><span></span>`, this.topLayer);
+    const e = this.saveInd;
+    e.classList.toggle('fail', !ok);
+    (e.querySelector('span') as HTMLElement).textContent = text;
+    e.classList.remove('out');
+    e.classList.add('on');
+    clearTimeout(this.saveIndT);
+    this.saveIndT = window.setTimeout(() => e.classList.add('out'), 1600);
   }
 
   flash(color = '#fff', ms = 180) {

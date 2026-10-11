@@ -390,3 +390,14 @@
 @keyframes ringPop { to { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
 @keyframes ringPopBig { 30% { transform: translate(-50%, -50%) scale(1.25); opacity: 1; } to { transform: translate(-50%, -50%) scale(1.9); opacity: 0; } }
 @keyframes ringBreak { to { transform: translate(-50%, -50%) scale(0.85) rotate(25deg); opacity: 0; } }
+
+/* battle speed plate (top-right, machine language) */
+.battle-speed { position: absolute; right: 26px; top: 18px; display: flex; align-items: center; gap: 10px; padding: 3px 16px; font: 700 12px var(--f-cmd); color: var(--bone-dim); opacity: 0.7; }
+.battle-speed::before { content: ''; position: absolute; inset: 0; z-index: -1; background: rgba(11, 9, 7, 0.75); transform: skewX(-14deg); border-right: 3px solid var(--gold-dk); }
+.battle-speed b { font: 800 14px var(--f-num); color: var(--gold); }
+.battle-speed.fast { opacity: 1; }
+.battle-speed.fast::before { border-right-color: var(--gold-hi); }
+.battle-speed.fast b { color: var(--gold-hi); }
+.battle-result .battle-speed, .battle-talk .battle-speed { display: none; }
+.rs-row b.bonus { color: var(--gold-hi); }
+.rs-row small { margin-left: 8px; font: 400 12px var(--f-body); color: var(--bone-dim); }

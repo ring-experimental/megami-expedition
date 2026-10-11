@@ -7,7 +7,7 @@ import { clamp, damp, dampAngle, mulberry32, rand, wrapAngle } from '../core/uti
 import { Effects } from '../fx/effects';
 import { FakeLight, patchObject } from '../fx/fakeLights';
 import { animateBackdrop, animateMotes, buildBackdrop, buildMotes, buildSky, getEnvMap } from '../fx/environment';
-import { CHESTS, PLAYER_START, PROPS, REST_POINT, SPAWNS, WORLD_RADIUS, type Circle, type ChestDef } from '../data/world';
+import { CHESTS, PLAYER_START, PROPS, REST_POINT, SPAWNS, WORLD_RADIUS, ZONE_NAME, type Circle, type ChestDef } from '../data/world';
 import { ITEMS } from '../data/items';
 import { SPECIES } from '../data/units';
 import { State } from '../game/state';
@@ -583,6 +583,49 @@ export class FieldMode {
     Sfx.play('rest');
     this.fx.pillar(this.rest.position.clone(), 0x5ff3ff, 6, 1.4, 1.4);
     this.game.ui.toast('에테르 샘의 힘으로 파티가 완전히 회복되었다. <span class="dim">몬스터가 다시 나타났다.</span>', 'cyan');
+    this.game.autosave();
+  }
+
+  // ---------------------------------------------------------------------
+  // Save / load (game/save.ts)
+  // ---------------------------------------------------------------------
+  /** Name shown on save slots and the load banner. */
+  placeName() {
+    return ZONE_NAME;
+  }
+
+  /** Copy the party's position into the state right before it is saved. */
+  captureState() {
+    const p = this.player;
+    State.current.zone = 'plains';
+    State.current.pos = { x: p.pos.x, z: p.pos.z, yaw: p.yaw };
+  }
+
+  /** Rebuild the field from a freshly loaded state: defeated enemies stay gone, opened chests stay open. */
+  syncFromState() {
+    const st = State.current;
+    for (const pr of this.projectiles) { this.scene.remove(pr.mesh); this.fx.lights.remove(pr.light); }
+    this.projectiles = [];
+    for (const e of this.enemies) {
+      e.reset();
+      if (st.defeated.has(e.spawn.id)) {
+        e.removed = true;
+        e.obj.visible = false;
+        if (e.ui) e.ui.root.style.display = 'none';
+      }
+    }
+    for (const c of this.chests) c.open = st.openedChests.has(c.def.id) ? 1 : 0;
+    const p = this.player;
+    if (st.pos) {
+      p.pos.set(st.pos.x, 0, st.pos.z);
+      p.yaw = st.pos.yaw;
+    } else {
+      p.pos.set(PLAYER_START.x, 0, PLAYER_START.z);
+      p.yaw = PLAYER_START.rot;
+    }
+    this.camYaw = p.yaw + Math.PI;
+    p.invuln = 2;
+    this.snapCamera();
   }
 
   private openChest(c: Chest) {

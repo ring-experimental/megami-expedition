@@ -29,3 +29,6 @@ export const DIFFICULTY: Record<Difficulty, {
   normal: { name: '노말', desc: '33원정대 기본에 가까운 판정. 타이밍 링이 표시됩니다.', parry: 0.095, dodge: 0.18, qtePerfect: 0.06, qteGood: 0.14, enemyDmg: 1, showRing: true },
   hard: { name: '하드', desc: '좁은 판정, 타이밍 링 없음. 적의 동작을 읽어야 합니다.', parry: 0.055, dodge: 0.115, qtePerfect: 0.04, qteGood: 0.1, enemyDmg: 1.25, showRing: false },
 };
+
+/** Battle choreography speeds (settings / Tab · Y in battle). */
+export const BATTLE_SPEEDS = [1, 1.5, 2];

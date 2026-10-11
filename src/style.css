@@ -77,6 +77,16 @@ kbd { display: inline-block; min-width: 1.6em; padding: 0 0.35em; margin: 0 1px;
 .toast.gold::before { border-left-color: var(--gold-hi); }
 .toast.cyan::before { border-left-color: var(--bone); }
 .toast.red::before { border-left-color: var(--crimson); }
+/* save indicator (ui.saving): machine language — a brass gear clicks round while the game writes */
+.save-ind { position: absolute; right: 24px; bottom: 20px; z-index: 31; display: flex; align-items: center; gap: 8px; padding: 4px 14px 4px 8px; font: 700 13px var(--f-cmd); color: var(--bone); opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+.save-ind::before { content: ''; position: absolute; inset: 0; z-index: -1; background: rgba(11, 9, 7, 0.82); transform: skewX(-14deg); border-right: 3px solid var(--gold); }
+.save-ind.on { opacity: 1; }
+.save-ind.out { opacity: 0; }
+.save-ind.fail::before { border-right-color: var(--crimson); }
+.save-ind i { display: block; width: 22px; height: 22px; }
+.save-ind i svg { width: 100%; height: 100%; fill: var(--gold); }
+.save-ind.on i { animation: saveTick 1.2s steps(10) infinite; }
+@keyframes saveTick { to { transform: rotate(360deg); } }
 @keyframes toastIn { from { opacity: 0; transform: translateX(-50px); } }
 
 .banner { position: absolute; left: 50%; top: 32%; transform: translate(-50%, -50%); text-align: center; z-index: 25; animation: bannerIn 0.45s cubic-bezier(.2,1.6,.4,1); transition: opacity 0.5s, transform 0.5s; pointer-events: none; }

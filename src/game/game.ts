@@ -15,6 +15,7 @@ import { battleCut } from '../ui/battleCut';
 import { FieldMode } from '../field/field';
 import { BattleMode, type BattleRequest } from '../battle/battle';
 import { GameState, State } from './state';
+import { Save, SLOT_NAME, type SlotId } from './save';
 import type { Difficulty } from '../data/types';
 
 type Mode = 'loading' | 'title' | 'field' | 'battle' | 'transition';
@@ -263,6 +264,52 @@ export class Game {
     });
   }
 
+  // ---------------------------------------------------------------------
+  // Saving (game/save.ts) — only from the field: battles and cut-ins are never saved mid-way
+  // ---------------------------------------------------------------------
+  private canSave() {
+    return this.mode === 'field' && this.field.controlsEnabled;
+  }
+
+  /** Write a slot from the field. `quiet` = autosave (indicator only, no toast). */
+  saveTo(slot: SlotId, quiet = false) {
+    if (this.mode !== 'field') return false;
+    this.field.captureState();
+    const ok = Save.write(slot, this.field.placeName());
+    this.ui.saving(ok ? (slot === 'auto' ? '자동 저장' : `${SLOT_NAME[slot]} 저장됨`) : '저장 실패 — 브라우저 저장소를 쓸 수 없습니다', ok);
+    if (!ok && !quiet) this.ui.toast('저장하지 못했습니다. 브라우저의 사이트 데이터 저장이 막혀 있거나 공간이 부족합니다.', 'red', 5000);
+    return ok;
+  }
+
+  autosave() {
+    if (this.mode === 'field') this.saveTo('auto', true);
+  }
+
+  /** Load a slot (from the title or the pause menu) and drop into the field. */
+  async loadSlot(slot: SlotId) {
+    if (!Save.header(slot)) { this.ui.toast(`${SLOT_NAME[slot]}: 저장된 데이터가 없습니다`, 'red'); return false; }
+    await this.ui.fadeOut(300);
+    if (!Save.load(slot)) {
+      this.ui.fadeIn(200);
+      this.ui.toast('저장 데이터를 읽지 못했습니다 (손상되었거나 더 새로운 버전).', 'red', 5000);
+      return false;
+    }
+    this.field.syncFromState();
+    if (this.mode === 'field') {
+      if (this.paused) { this.paused = false; this.menus.hidePause(); Input.consumePressed(); }
+      this.field.enter();
+    } else this.setMode('field');
+    this.ui.fadeIn(500);
+    this.ui.banner(this.field.placeName(), `${SLOT_NAME[slot]}에서 불러옴`, 'zone', 1800);
+    return true;
+  }
+
+  private quickKeys() {
+    if (!this.canSave()) return;
+    if (Input.pressed('F5')) this.saveTo('quick');
+    else if (Input.pressed('F9')) void this.loadSlot('quick');
+  }
+
   async startBattle(req: BattleRequest) {
     if (this.mode !== 'field') return;
     // freeze the frame the contact happened on (the field stops updating while in 'transition')
@@ -290,6 +337,7 @@ export class Game {
     }
     this.setMode('field');
     this.ui.fadeIn(400);
+    if (result === 'victory') this.autosave();
   }
 
   openPause() {
@@ -353,6 +401,9 @@ export class Game {
     // Esc / Start back out of a menu sub-state (e.g. a party swap) before closing the menu
     else if (this.paused && Input.pressed('Escape', 'PadStart') && performance.now() - this.pauseOpenedAt > 350) { if (!this.menus.back()) this.closePause(); }
     else if (this.mode === 'title' || this.paused) this.menus.padUpdate();
+
+    if (this.mode === 'field' && !this.paused) this.quickKeys();
+    if ((this.mode === 'field' || this.mode === 'battle') && !this.paused) State.current.playTime += dt;
 
     let scene: THREE.Scene, camera: THREE.Camera;
     if (this.mode === 'battle') {

@@ -64,7 +64,7 @@ class InputManager {
   init(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Tab' || e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+      if (e.code === 'Tab' || e.code === 'Space' || e.code === 'F5' || e.code === 'F9' || e.code.startsWith('Arrow')) e.preventDefault();
       if (e.repeat) return;
       if (e.isTrusted) this.setDevice('kb');
       this.press(e.code, e.timeStamp || performance.now());

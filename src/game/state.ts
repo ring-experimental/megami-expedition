@@ -32,6 +32,15 @@ export class GameState {
   tutorialField = false;
   /** Battle tips already shown (battle/tips.ts); cleared from Menu → 조작법 to see them again. */
   tipsSeen = new Set<string>();
+  /** Battle choreography speed (×1 / ×1.5 / ×2); timing windows are unaffected. */
+  battleSpeed = 1;
+  /** Seconds of play (field + battle; menus excluded), shown on save slots. */
+  playTime = 0;
+  /** Where the party stands: zone id + position (written right before saving, read on load). */
+  zone = 'plains';
+  pos: { x: number; z: number; yaw: number } | null = null;
+  /** Story / quest progress: free-form counters and switches keyed by id. */
+  flags: Record<string, number> = {};
 
   constructor() {
     for (const h of Object.values(HEROES)) {
@@ -99,6 +108,43 @@ export class GameState {
     this.roster.push(m);
     if (this.active.length < 3) this.active.push(m.id);
     return { absorbed: false, member: m, xp: 0, levelUp: null };
+  }
+
+  flag(id: string) {
+    return this.flags[id] ?? 0;
+  }
+  setFlag(id: string, v = 1) {
+    this.flags[id] = v;
+  }
+
+  chapterTitle() {
+    return '제1장';
+  }
+
+  /** Plain JSON: Sets become arrays (tagged so fromJSON can restore them). */
+  toJSON(): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(this)) out[k] = v instanceof Set ? { __set: [...v] } : v;
+    return out;
+  }
+
+  /**
+   * Rebuild from toJSON() output. Starts from a fresh state and overlays the saved fields, so a
+   * save made before a field existed still loads (the field keeps its default), and nested records
+   * like the bestiary keep entries for species added since.
+   */
+  static fromJSON(data: unknown): GameState {
+    const st = new GameState();
+    if (!data || typeof data !== 'object') throw new Error('bad save');
+    const target = st as unknown as Record<string, unknown>;
+    for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+      if (!(k in target)) continue;
+      const cur = target[k];
+      if (cur instanceof Set) target[k] = new Set((v as { __set?: unknown[] })?.__set ?? []);
+      else if (cur && typeof cur === 'object' && !Array.isArray(cur) && v && typeof v === 'object' && !Array.isArray(v)) Object.assign(cur, v);
+      else target[k] = v;
+    }
+    return st;
   }
 
   addItem(id: string, n = 1) {

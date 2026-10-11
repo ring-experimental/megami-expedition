@@ -10,7 +10,7 @@ import { animateBackdrop, animateMotes, buildBackdrop, buildMotes, buildSky, get
 import { BASIC_ATTACK, SKILLS, type SkillDef } from '../data/skills';
 import { ITEMS } from '../data/items';
 import { SPECIES, type EnemyMove } from '../data/units';
-import { DIFFICULTY, ELEMENT_COLOR, ELEMENT_NAME, type Element } from '../data/types';
+import { BATTLE_SPEEDS, DIFFICULTY, ELEMENT_COLOR, ELEMENT_NAME, type Element } from '../data/types';
 import { State } from '../game/state';
 import type { Game } from '../game/game';
 import type { FieldEnemy } from '../field/fieldEnemy';
@@ -61,6 +61,8 @@ export class BattleMode {
   private recruited: string[] = [];
   private lastCmd: Record<string, number> = {};
   private pendingTip: TipId | null = null;
+  /** Feats tallied for the tactical bonus (victory EXP / 기어 multiplier). */
+  private feats = { parries: 0, counters: 0, weak: 0, breaks: 0, dmgTaken: 0, partyTurns: 0 };
 
   constructor(private game: Game) {
     const s = this.scene;
@@ -114,6 +116,7 @@ export class BattleMode {
   private setup(req: BattleRequest) {
     this.req = req;
     this.recruited = [];
+    this.feats = { parries: 0, counters: 0, weak: 0, breaks: 0, dmgTaken: 0, partyTurns: 0 };
     for (const u of this.units) this.scene.remove(u.obj);
     this.units = [];
     this.fx.clear();
@@ -161,6 +164,7 @@ export class BattleMode {
     this.active = true;
     this.game.ui.camera = this.camera;
     this.bui.show(true);
+    this.bui.setSpeed(st0().battleSpeed);
     this.updateOrder();
 
     // intro camera sweep
@@ -183,6 +187,7 @@ export class BattleMode {
       this.updateOrder();
       if (!(await this.turnStart(u))) { result = this.checkEnd(); continue; }
       if (u.side === 'party') {
+        this.feats.partyTurns++;
         const r = await this.partyTurn(u);
         if (r === 'fled') { result = 'fled'; break; }
       } else {
@@ -721,6 +726,7 @@ export class BattleMode {
     const live = targets.filter((t) => !t.ko);
     if (res === 'parry') {
       e.rapport++;
+      this.feats.parries++;
       Sfx.play('parry');
       Input.rumble(0.35, 0.8, 90);
       this.shake = 0.18;
@@ -751,6 +757,7 @@ export class BattleMode {
   }
 
   private async counter(u: BUnit, e: BUnit) {
+    this.feats.counters++;
     await this.bui.cutIn({ unit: u, title: 'Counter', sub: u.name }, 0.35);
     Sfx.play('counter');
     const ranged = this.isRanged(u);
@@ -785,6 +792,8 @@ export class BattleMode {
     if (def.broken) dmg *= 1.5;
     dmg = Math.max(1, Math.round(dmg));
     def.hp = Math.max(0, def.hp - dmg);
+    if (def.side === 'party') this.feats.dmgTaken += dmg;
+    else if (aff > 1) this.feats.weak++;
     def.flashT = 0.15;
     const p = def.centerPos();
     const col = ELEMENT_COLOR[o.element];
@@ -826,6 +835,7 @@ export class BattleMode {
     e.brk = Math.min(e.brkMax, e.brk + v);
     if (e.brk >= e.brkMax) {
       e.broken = true;
+      this.feats.breaks++;
       Sfx.play('break');
       Input.rumble(0.9, 0.5, 220);
       void this.bui.cutIn({ title: 'Break', sub: e.name });
@@ -937,10 +947,12 @@ export class BattleMode {
       for (const p of this.party) if (!p.ko) { p.anim.stance = 'idle'; p.anim.play('victory'); this.faceHome(p); p.pos.copy(p.home); p.obj.rotation.y = 0; }
       this.setCam(new THREE.Vector3(2.5, 2.4, PARTY_Z - 6), new THREE.Vector3(0, 1.2, PARTY_Z), 2.5);
       await this.tl.wait(1.0);
-      // rewards
+      // rewards (× tactical bonus)
       const defeated = this.enemies.filter((e) => e.ko && !e.removed);
-      const xp = defeated.reduce((s, e) => s + e.species!.xp, 0);
-      const money = defeated.reduce((s, e) => s + e.species!.money, 0);
+      const bonuses = this.tacticalBonuses();
+      const mult = 1 + bonuses.reduce((s, b) => s + b.pct, 0) / 100;
+      const xp = Math.round(defeated.reduce((s, e) => s + e.species!.xp, 0) * mult);
+      const money = Math.round(defeated.reduce((s, e) => s + e.species!.money, 0) * mult);
       st.money += money;
       const drops: string[] = [];
       for (const e of defeated) for (const d of e.species!.drops) if (chance(d.chance)) { st.addItem(d.item); drops.push(`${icon('item', d.item, ITEMS[d.item].icon)} ${ITEMS[d.item].name}`); }
@@ -956,7 +968,7 @@ export class BattleMode {
         const up = st.giveXp(m, gain);
         rows.push({ pid: m.id, name: m.name, color: m.color, gain, reserve: !isActive, fromLv, fromXp, toLv: m.level, toXp: m.xp, newSkills: up ? up.newSkills.map((s) => SKILLS[s].name) : [] });
       }
-      await this.bui.victoryScreen({ xp, money, drops, recruited: this.recruited.map((id) => SPECIES[id].name), rows });
+      await this.bui.victoryScreen({ xp, money, drops, recruited: this.recruited.map((id) => SPECIES[id].name), rows, bonuses });
     } else if (result === 'fled') {
       this.syncHp();
       this.game.ui.toast('무사히 도망쳤다');
@@ -974,6 +986,33 @@ export class BattleMode {
     return result;
   }
 
+  /**
+   * Tactical bonus (궤적-style): feats this battle add to the EXP / 기어 multiplier, capped at +100%.
+   * Only counts when something was actually defeated (a pure recruit/flee run earns nothing extra).
+   */
+  private tacticalBonuses() {
+    const f = this.feats;
+    const out: { label: string; pct: number }[] = [];
+    const add = (ok: boolean, label: string, pct: number) => { if (ok) out.push({ label, pct }); };
+    add(this.req.advantage === 'party', '선제 공격', 10);
+    add(f.parries >= 3, `패링 ${f.parries}회`, Math.min(30, f.parries * 5));
+    add(f.counters > 0, `반격 ${f.counters}회`, Math.min(20, f.counters * 10));
+    add(f.weak >= 2, '약점 공략', 10);
+    add(f.breaks > 0, f.breaks > 1 ? `브레이크 ${f.breaks}회` : '브레이크', Math.min(20, f.breaks * 10));
+    add(f.dmgTaken === 0, '무피해', 20);
+    add(f.partyTurns <= 3, '속전속결', 10);
+    add(this.party.some((p) => !p.ko && p.hp <= p.maxHp * 0.3), '위기 극복', 10);
+    let total = 0;
+    return out.filter((b) => { if (total >= 100) return false; b.pct = Math.min(b.pct, 100 - total); total += b.pct; return true; });
+  }
+
+  private cycleSpeed() {
+    const st = State.current;
+    st.battleSpeed = BATTLE_SPEEDS[(BATTLE_SPEEDS.indexOf(st.battleSpeed) + 1) % BATTLE_SPEEDS.length];
+    this.bui.setSpeed(st.battleSpeed);
+    Sfx.play('ui_move');
+  }
+
   private syncHp() {
     for (const p of this.party) p.member!.hp = Math.max(1, p.hp);
   }
@@ -988,8 +1027,11 @@ export class BattleMode {
   }
 
   // =====================================================================
-  update(dt: number) {
+  update(rawDt: number) {
     if (!this.active) return;
+    // battle speed (settings / Tab · Y): choreography only — parry, dodge and QTE windows always run at ×1
+    if (Input.pressed('Tab', 'PadY')) this.cycleSpeed();
+    const dt = this.sessions.length ? rawDt : rawDt * State.current.battleSpeed;
     this.time += dt;
     this.tl.update(dt);
     for (const s of this.sessions) s.update(this.tl.time);
@@ -1015,6 +1057,8 @@ export class BattleMode {
     animateMotes(this.motes, this.time, dt, new THREE.Vector3(), 40, -1);
   }
 }
+
+const st0 = () => State.current;
 
 function statusLabel(id: string) {
   const m: Record<string, string> = { atkUp: '공격↑', defUp: '방어↑', haste: '가속', guard: '도발', burn: '화상', atkDown: '공격↓', enraged: '격노' };
