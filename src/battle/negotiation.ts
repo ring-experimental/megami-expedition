@@ -23,6 +23,7 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
   const st = State.current;
   const name = sp.name;
   const col = sp.color;
+  ui.beginTalk(enemy); // every exit below ends with ui.closeDialog(), which ends the talk scene
 
   if (sp.talkGate === 'brokenOrHalf' && !enemy.broken && enemy.hp > enemy.maxHp * 0.5) {
     await ui.say(name, pick(per.greet), col, sp.id);

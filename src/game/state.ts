@@ -1,5 +1,5 @@
 import { HEROES, SPECIES, allyStats, heroStats, xpToNext } from '../data/units';
-import type { Difficulty, Stats } from '../data/types';
+import type { Difficulty, Element, Stats } from '../data/types';
 import { SKILLS } from '../data/skills';
 
 /** A persistent party member (hero or recruited monster). */
@@ -24,12 +24,14 @@ export class GameState {
   money = 120;
   defeated = new Set<string>();
   openedChests = new Set<string>();
-  bestiary: Record<string, { seen: boolean; recruited: boolean; absorbed: number }> = {};
+  /** `known`: affinities (weak/resist) the player has discovered by hitting this species with the element. */
+  bestiary: Record<string, { seen: boolean; recruited: boolean; absorbed: number; known: Element[] }> = {};
   showParryRing = true;
   mouseSens = 1;
   padSens = 1;
   tutorialField = false;
-  tutorialBattle = false;
+  /** Battle tips already shown (battle/tips.ts); cleared from Menu → 조작법 to see them again. */
+  tipsSeen = new Set<string>();
 
   constructor() {
     for (const h of Object.values(HEROES)) {
@@ -37,7 +39,7 @@ export class GameState {
       m.hp = this.stats(m).hp;
       this.roster.push(m);
     }
-    for (const id of Object.keys(SPECIES)) this.bestiary[id] = { seen: false, recruited: false, absorbed: 0 };
+    for (const id of Object.keys(SPECIES)) this.bestiary[id] = { seen: false, recruited: false, absorbed: 0, known: [] };
   }
 
   member(id: string) {

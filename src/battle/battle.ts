@@ -15,11 +15,11 @@ import { State } from '../game/state';
 import type { Game } from '../game/game';
 import type { FieldEnemy } from '../field/fieldEnemy';
 import { BUnit } from './bunit';
-import { BattleUI, type MenuItem } from './battleUI';
+import { BattleUI, type MenuItem, type VictoryRow } from './battleUI';
 import { DefenseSession, QTE_MULT, QteSession, type DefenseResult, type QteGrade } from './timing';
 import { negotiate } from './negotiation';
+import { TIPS, type TipId } from './tips';
 import { icon } from '../ui/art';
-import { pb } from '../ui/glyph';
 
 export interface BattleRequest {
   formation: string[];
@@ -60,6 +60,7 @@ export class BattleMode {
   private time = 0;
   private recruited: string[] = [];
   private lastCmd: Record<string, number> = {};
+  private pendingTip: TipId | null = null;
 
   constructor(private game: Game) {
     const s = this.scene;
@@ -173,20 +174,6 @@ export class BattleMode {
     this.bui.refresh();
     await this.tl.wait(1.3);
 
-    if (!State.current.tutorialBattle) {
-      State.current.tutorialBattle = true;
-      await this.bui.panel((s) => {
-        const pad = s.device === 'pad';
-        return `<h2>턴제 전투 안내</h2>
-        <p><b>AP</b>: 턴마다 +1. 기본 공격은 AP를 모으고, 스킬은 AP를 소모합니다.</p>
-        <p><b>스킬 QTE</b>: 스킬 사용 중 원이 맞물리는 순간 ${pad ? `${pb('a')}/${pb('b')}/${pb('rb')}` : '<kbd>F</kbd>/<kbd>Space</kbd>/<kbd>좌클릭</kbd>'} → 위력 상승.</p>
-        <p><b>적의 공격</b>: 명중 순간 ${pad ? `${pb('a')}/${pb('rb')}` : '<kbd>F</kbd>/<kbd>좌클릭</kbd>'} <span class="kw">패링</span>(좁은 판정, AP+1, 전부 막으면 반격)<br/>
-        또는 ${pad ? pb('b') : '<kbd>Space</kbd>/<kbd>우클릭</kbd>'} <span class="kw">회피</span>(넓은 판정). 연타하면 잠시 입력이 막힙니다.</p>
-        <p><b>대화</b>: 적과 협상해 동료로 영입! 성격에 맞는 대답을 고르세요. <span class="kw">패링에 성공한 횟수</span>만큼 영입 확률이 오릅니다.</p>
-        <p><b>브레이크</b>: 적의 노란 게이지를 채우면 1턴 기절 + 받는 피해 증가.</p>`;
-      }, 'tutorial');
-    }
-
     let result: BattleResult | null = null;
     while (!result) {
       result = this.checkEnd();
@@ -244,7 +231,17 @@ export class BattleMode {
   }
 
   /** Returns false if the unit cannot act this turn. */
+  /** Show a tip the first time its concept comes up (the battle waits on it). */
+  private async tip(id: TipId) {
+    const seen = State.current.tipsSeen;
+    if (seen.has(id)) return;
+    seen.add(id);
+    await this.bui.tip(TIPS[id]);
+  }
+
   private async turnStart(u: BUnit) {
+    // tips raised mid-action (break) wait for the next turn boundary
+    if (this.pendingTip) { const t = this.pendingTip; this.pendingTip = null; await this.tip(t); }
     this.current = u;
     this.updateOrder();
     this.bui.setActive(u);
@@ -289,7 +286,9 @@ export class BattleMode {
   private async partyTurn(u: BUnit): Promise<'done' | 'fled'> {
     for (;;) {
       this.camCommand(u);
+      await this.tip('ap');
       const cmd = await this.chooseCommand(u);
+      if (cmd) this.bui.hideCommand();
       if (!cmd) continue;
       switch (cmd.kind) {
         case 'attack': await this.doAttack(u, cmd.target); return 'done';
@@ -318,7 +317,7 @@ export class BattleMode {
       { label: `${icon('cmd', 'talk')}대화`, right: '▶', desc: '적과 협상해 동료로 영입을 시도한다. (턴 소모)', value: 'talk' },
       { label: `${icon('cmd', 'item')}아이템`, right: '▶', desc: '소지품을 사용한다.', value: 'item' },
       { label: `${icon('cmd', 'flee')}도주`, desc: '전투에서 벗어난다.', value: 'flee' },
-    ], { cancellable: false, startIndex: this.lastCmd[u.uid] ?? 0 });
+    ], { cancellable: false, startIndex: this.lastCmd[u.uid] ?? 0, ring: u });
     const idx = ['attack', 'skill', 'talk', 'item', 'flee'].indexOf(top!);
     this.lastCmd[u.uid] = idx;
     const pickEnemy = async () => {
@@ -395,7 +394,8 @@ export class BattleMode {
   private async doSkill(u: BUnit, sk: SkillDef, targets: BUnit[]) {
     u.ap -= sk.ap;
     this.bui.refresh();
-    this.game.ui.moveName(sk.name);
+    if (sk.qte > 0) await this.tip('qte');
+    await this.bui.cutIn({ unit: u, title: sk.name, sub: u.name });
     await this.performSkill(u, sk, targets, !sk.melee);
   }
 
@@ -529,6 +529,7 @@ export class BattleMode {
     this.setCam(mid.clone().add(new THREE.Vector3(6.5, 2.4, 1.5)), mid.clone().add(new THREE.Vector3(0, 1.1, 0)), 4);
     u.anim.play('talk');
     e.anim.play('talk');
+    await this.tip('talk');
     const res = await negotiate(this.bui, u, e, State.current.difficulty !== 'hard');
     const st = State.current;
     switch (res.outcome) {
@@ -622,6 +623,7 @@ export class BattleMode {
 
   private async enemyTurn(e: BUnit) {
     const mv = this.chooseMove(e);
+    if (mv.kind !== 'self') await this.tip('parry');
     this.game.ui.moveName(`${e.name} · ${mv.name}`, 'enemy');
     if (mv.kind === 'self') {
       this.setCam(e.centerPos().add(new THREE.Vector3(2.5, 1.5, 5)), e.centerPos(), 4);
@@ -749,7 +751,7 @@ export class BattleMode {
   }
 
   private async counter(u: BUnit, e: BUnit) {
-    this.game.ui.banner('COUNTER!', '', 'gold', 800);
+    await this.bui.cutIn({ unit: u, title: 'Counter', sub: u.name }, 0.35);
     Sfx.play('counter');
     const ranged = this.isRanged(u);
     this.camAction(u, e);
@@ -789,8 +791,9 @@ export class BattleMode {
     this.elementFx(o.element, def);
     this.fx.sparks.burst(p, 16, { color: col, speed: 6, life: 0.35, size: 0.12, gravity: 6 });
     this.game.ui.popup(p.clone().add(new THREE.Vector3(rand(-0.3, 0.3), 0.3, 0)), `${dmg}`, `dmg ${def.side}${aff > 1 ? ' weak' : aff < 1 ? ' resist' : ''}${def.broken ? ' crit' : ''}`);
-    if (aff > 1) this.game.ui.popup(def.topPos(), '약점!', 'weak-tag', 0.9);
-    else if (aff < 1) this.game.ui.popup(def.topPos(), '내성', 'resist-tag', 0.9);
+    if (aff !== 1) this.discoverAffinity(def, o.element);
+    if (aff > 1) this.game.ui.popup(def.topPos(), 'WEAK', 'weak-tag', 0.9);
+    else if (aff < 1) this.game.ui.popup(def.topPos(), 'RESIST', 'resist-tag', 0.9);
     Sfx.play(dmg > def.maxHp * 0.2 ? 'hit_heavy' : 'hit');
     this.shake = Math.max(this.shake, def.side === 'party' ? 0.25 : 0.12);
     if (def.side === 'party') Input.rumble(0.7, 0.4, 160);
@@ -810,6 +813,14 @@ export class BattleMode {
     }
   }
 
+  /** First weak/resist hit on a species reveals that affinity (target panel + bestiary). */
+  private discoverAffinity(def: BUnit, element: Element) {
+    const b = State.current.bestiary[def.species!.id];
+    if (b.known.includes(element)) return;
+    b.known.push(element);
+    this.bui.refreshAffinity();
+  }
+
   private addBreak(e: BUnit, v: number) {
     if (e.broken || !e.alive) return;
     e.brk = Math.min(e.brkMax, e.brk + v);
@@ -817,7 +828,8 @@ export class BattleMode {
       e.broken = true;
       Sfx.play('break');
       Input.rumble(0.9, 0.5, 220);
-      this.game.ui.popup(e.topPos(), 'BREAK!', 'break-pop', 1.3);
+      void this.bui.cutIn({ title: 'Break', sub: e.name });
+      if (!State.current.tipsSeen.has('break')) this.pendingTip = 'break';
       this.fx.ring(e.pos.clone().add(new THREE.Vector3(0, 0.1, 0)), 0xffe066, 3.5, 0.5);
       this.fx.sparks.burst(e.centerPos(), 40, { color: 0xffe066, speed: 9, life: 0.6, size: 0.15, gravity: 5 });
       this.shake = 0.4;
@@ -922,10 +934,9 @@ export class BattleMode {
     this.bui.hideCommand();
     if (result === 'victory') {
       Sfx.play('victory');
-      this.game.ui.banner('VICTORY', '', 'gold', 1600);
       for (const p of this.party) if (!p.ko) { p.anim.stance = 'idle'; p.anim.play('victory'); this.faceHome(p); p.pos.copy(p.home); p.obj.rotation.y = 0; }
       this.setCam(new THREE.Vector3(2.5, 2.4, PARTY_Z - 6), new THREE.Vector3(0, 1.2, PARTY_Z), 2.5);
-      await this.tl.wait(1.6);
+      await this.tl.wait(1.0);
       // rewards
       const defeated = this.enemies.filter((e) => e.ko && !e.removed);
       const xp = defeated.reduce((s, e) => s + e.species!.xp, 0);
@@ -934,32 +945,29 @@ export class BattleMode {
       const drops: string[] = [];
       for (const e of defeated) for (const d of e.species!.drops) if (chance(d.chance)) { st.addItem(d.item); drops.push(`${icon('item', d.item, ITEMS[d.item].icon)} ${ITEMS[d.item].name}`); }
       this.syncHp();
-      const lines: string[] = [];
-      for (const m of st.roster) {
+      // active members first, then the reserve (half EXP)
+      const rows: VictoryRow[] = [];
+      const order = [...st.roster].sort((a, b) => Number(!st.active.includes(a.id)) - Number(!st.active.includes(b.id)));
+      for (const m of order) {
         const isActive = st.active.includes(m.id);
         const gain = Math.round(xp * (isActive ? 1 : 0.5));
         if (!gain) continue;
+        const fromLv = m.level, fromXp = m.xp;
         const up = st.giveXp(m, gain);
-        lines.push(`<div class="rp-row"><span style="color:${m.color}">${m.name}</span><span>Lv${m.level}</span><span>EXP +${gain}${isActive ? '' : ' <span class="dim">(대기)</span>'}</span>${up ? `<span class="lvup">LEVEL UP!${up.newSkills.length ? ' 새 스킬: ' + up.newSkills.map((s) => SKILLS[s].name).join(', ') : ''}</span>` : '<span></span>'}</div>`);
+        rows.push({ pid: m.id, name: m.name, color: m.color, gain, reserve: !isActive, fromLv, fromXp, toLv: m.level, toXp: m.xp, newSkills: up ? up.newSkills.map((s) => SKILLS[s].name) : [] });
       }
-      if (lines.some((l) => l.includes('LEVEL UP'))) Sfx.play('levelup');
-      const rec = this.recruited.map((id) => SPECIES[id].name);
-      await this.bui.panel(`<h2>전투 승리</h2>
-        <div class="rp-sum">EXP ${xp} · ⚙ ${money} 기어${drops.length ? ' · ' + drops.join(', ') : ''}</div>
-        ${rec.length ? `<div class="rp-rec">영입: ${rec.join(', ')}</div>` : ''}
-        <div class="rp-rows">${lines.join('') || '<div class="dim">획득 경험치 없음 (영입/퇴장만 발생)</div>'}</div>`, 'victory');
+      await this.bui.victoryScreen({ xp, money, drops, recruited: this.recruited.map((id) => SPECIES[id].name), rows });
     } else if (result === 'fled') {
       this.syncHp();
       this.game.ui.toast('무사히 도망쳤다');
     } else if (result === 'defeat') {
       Sfx.play('defeat');
-      this.game.ui.banner('전멸...', '', 'red', 2000);
       this.setCam(new THREE.Vector3(0, 10, PARTY_Z + 6), new THREE.Vector3(0, 0, PARTY_Z), 1.5);
-      await this.tl.wait(2);
-      const choice = await this.bui.menuSelect<string>('전멸했다', [
+      await this.tl.wait(1.2);
+      const choice = await this.bui.defeatScreen<string>([
         { label: '다시 도전', desc: '이 전투를 처음부터 다시 시작합니다.', value: 'retry' },
         { label: '에테르 샘에서 재시작', desc: 'HP를 회복하고 휴식 지점으로 돌아갑니다.', value: 'rest' },
-      ], { cancellable: false });
+      ]);
       if (choice === 'retry') result = 'retry';
     }
     this.end();

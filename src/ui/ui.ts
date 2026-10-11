@@ -15,6 +15,11 @@ export class UI {
   camera: THREE.Camera | null = null;
   width = window.innerWidth;
   height = window.innerHeight;
+  /**
+   * UI size factor: layouts are authored for a 720px-tall screen and scale with the window height.
+   * HUD/top layers get CSS `zoom`; world-anchored elements (placeAt, popups) scale themselves.
+   */
+  scale = 1;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -23,11 +28,14 @@ export class UI {
     this.topLayer = el('div', 'layer top-layer', undefined, root);
     this.toasts = el('div', 'toasts', undefined, this.topLayer);
     this.fade = el('div', 'fade', undefined, root);
+    this.resize(this.width, this.height);
   }
 
   resize(w: number, h: number) {
     this.width = w;
     this.height = h;
+    this.scale = Math.min(4, Math.max(0.75, h / 720));
+    this.root.style.setProperty('--ui-scale', String(this.scale));
   }
 
   project(pos: THREE.Vector3) {
@@ -40,7 +48,9 @@ export class UI {
     const p = this.project(pos);
     if (!p) { e.style.display = 'none'; return false; }
     e.style.display = '';
-    e.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, ${anchor === 'bottom' ? '-100%' : '-50%'})`;
+    // scale about the anchor point so the element stays pinned to the world position
+    e.style.transformOrigin = anchor === 'bottom' ? '50% 100%' : '50% 50%';
+    e.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, ${anchor === 'bottom' ? '-100%' : '-50%'}) scale(${this.scale})`;
     return true;
   }
 
@@ -57,7 +67,7 @@ export class UI {
       const k = a.t / a.dur;
       const p = this.project(a.pos);
       if (p) {
-        a.el.style.transform = `translate(${p.x}px, ${p.y - k * 60 * a.drift}px) translate(-50%, -50%)`;
+        a.el.style.transform = `translate(${p.x}px, ${p.y - k * 60 * a.drift * this.scale}px) translate(-50%, -50%) scale(${this.scale})`;
         a.el.style.opacity = String(k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1);
       }
       if (k >= 1) {
@@ -85,6 +95,11 @@ export class UI {
     const e = el('div', 'banner ' + cls, `<div class="banner-main">${text}</div>${sub ? `<div class="banner-sub">${sub}</div>` : ''}`, this.topLayer);
     setTimeout(() => e.classList.add('out'), ms);
     setTimeout(() => e.remove(), ms + 600);
+  }
+
+  /** Fade out any banners still on screen (e.g. before a tip takes the stage). */
+  clearBanners() {
+    for (const b of this.topLayer.querySelectorAll('.banner')) b.classList.add('out');
   }
 
   /** Small top-center move name plate. */

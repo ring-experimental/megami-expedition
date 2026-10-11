@@ -2,7 +2,10 @@ import { Input } from '../core/input';
 import { Sfx } from '../core/audio';
 import { clamp } from '../core/utils';
 
-const FOCUSABLE = 'button, .rc:not(.locked), .opt';
+const FOCUSABLE = 'button, .rc:not(.locked), .opt, .mn-focus';
+
+/** A focusable row that ←/→ adjusts in place (settings ◀ value ▶) instead of moving focus. */
+export type Adjustable = HTMLElement & { adjust?: (dir: number) => void };
 
 /**
  * Gamepad focus navigation for DOM menus (title, pause). D-pad/stick moves a `.pad-focus`
@@ -27,6 +30,8 @@ export class PadNav {
     this.cur = e;
     e.classList.add('pad-focus');
     e.scrollIntoView({ block: 'nearest' });
+    // lets menus mirror pad focus (e.g. a detail panel that follows the focused card)
+    e.dispatchEvent(new Event('padfocus'));
   }
 
   update(root: HTMLElement, onBack: () => void, onTab?: (dir: number) => void) {
@@ -41,7 +46,10 @@ export class PadNav {
     const dx = Input.pressed('PadLeft', 'PadLSLeft') ? -1 : Input.pressed('PadRight', 'PadLSRight') ? 1 : 0;
     const dy = dx ? 0 : Input.pressed('PadUp', 'PadLSUp') ? -1 : Input.pressed('PadDown', 'PadLSDown') ? 1 : 0;
     const range = cur.querySelector<HTMLInputElement>('input[type=range]');
-    if (range && dx) {
+    const adj = (cur as Adjustable).adjust;
+    if (adj && dx) {
+      adj(dx);
+    } else if (range && dx) {
       const step = Number(range.step) || 0.1;
       range.value = String(clamp(Number(range.value) + dx * step, Number(range.min), Number(range.max)));
       range.dispatchEvent(new Event('input'));
