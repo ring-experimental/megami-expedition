@@ -17,7 +17,14 @@ const TONE_LABEL: Record<Tone, string> = { kind: '다정', bold: '대담', witty
  *  - optional demand (item / gears / HP)
  *  - final roll: base + mood + parries (rapport) + HP loss + broken + level diff
  */
-export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showHints: boolean): Promise<{ outcome: TalkOutcome; chance?: number }> {
+export interface TalkOptions {
+  /** Hold-up 포위 협상: +25% chance, the enemy can't storm off or fly into a rage. */
+  cornered?: boolean;
+  /** Other party members still standing — a recruited monster of the same species / temperament chimes in. */
+  allies?: BUnit[];
+}
+
+export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showHints: boolean, opts: TalkOptions = {}): Promise<{ outcome: TalkOutcome; chance?: number }> {
   const sp = enemy.species!;
   const per = PERSONALITIES[sp.personality];
   const st = State.current;
@@ -25,7 +32,7 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
   const col = sp.color;
   ui.beginTalk(enemy); // every exit below ends with ui.closeDialog(), which ends the talk scene
 
-  if (sp.talkGate === 'brokenOrHalf' && !enemy.broken && enemy.hp > enemy.maxHp * 0.5) {
+  if (sp.talkGate === 'brokenOrHalf' && !enemy.broken && enemy.hp > enemy.maxHp * 0.5 && !opts.cornered) {
     await ui.say(name, pick(per.greet), col, sp.id);
     await ui.say('시스템', '말이 통하지 않는다... (브레이크 상태이거나 HP가 절반 이하일 때 협상 가능)', '#9aa2ad');
     ui.closeDialog();
@@ -34,8 +41,18 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
 
   enemy.talks++;
   await ui.say(name, enemy.broken ? pick(per.greetBroken) : pick(per.greet), col, sp.id);
+  if (opts.cornered) await ui.say('시스템', '도망칠 곳이 없다 — 상대가 귀를 기울인다. (영입 확률 +25%)', '#9aa2ad');
   if (enemy.talks === 1 && showHints) {
     await ui.say('시스템', `성격: 「${per.name}」 — ${per.desc}`, '#9aa2ad');
+  }
+  // a recruited monster of the same kind (or the same temperament) vouches for the party
+  const kin = opts.allies?.find((a) => a.species?.id === sp.id) ?? opts.allies?.find((a) => a.species && a.species.personality === sp.personality);
+  if (kin) {
+    const same = kin.species!.id === sp.id;
+    await ui.say(kin.name, (same ? VOUCH_SAME[sp.personality] : VOUCH_KIN[sp.personality]) ?? '이 사람들, 믿어도 돼.', kin.color, kin.pid);
+    enemy.mood += same ? 2 : 1;
+    Sfx.play('ui_ok');
+    await ui.say(name, pick(per.like), col, sp.id, 'happy');
   }
 
   // two questions
@@ -55,7 +72,7 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
     if (delta > 0) Sfx.play('ui_ok');
     else if (delta < 0) Sfx.play('talk_fail');
     await ui.say(name, line + (showHints ? `  (${delta >= 0 ? '+' : ''}${delta})` : ''), col, sp.id, face);
-    if (enemy.mood <= -3) {
+    if (enemy.mood <= -3 && !opts.cornered) {
       await ui.say(name, pick(per.angry), col, sp.id, 'angry');
       ui.closeDialog();
       enemy.mood = -1;
@@ -89,7 +106,7 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
   }
 
   // greedy/childish may run off with the gift (classic SMT trolling)
-  if (gave && (sp.personality === 'childish' || sp.personality === 'greedy') && Math.random() < 0.1) {
+  if (gave && !opts.cornered && (sp.personality === 'childish' || sp.personality === 'greedy') && Math.random() < 0.1) {
     await ui.say(name, sp.personality === 'childish' ? '고마워~ 그럼 안녕! 부글부글~' : '부오오... 연료는 잘 받았다.', col, sp.id);
     ui.closeDialog();
     return { outcome: 'left' };
@@ -106,6 +123,7 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
     ['브레이크 상태', enemy.broken ? 0.15 : 0],
     ['레벨 차이', lvDiff],
     ['같은 종족 동료 보유', already],
+    ['포위 협상', opts.cornered ? 0.25 : 0],
   ];
   let chance = parts.reduce((s, [, v]) => s + v, 0);
   if (sp.personality === 'honorable' && enemy.rapport === 0) {
@@ -124,6 +142,47 @@ export async function negotiate(ui: BattleUI, talker: BUnit, enemy: BUnit, showH
   Sfx.play('talk_fail');
   await ui.say(name, pick(per.refuse), col, sp.id, 'angry');
   if (sp.personality === 'honorable' && enemy.rapport === 0) await ui.say(name, '...검으로 증명해 보아라. (패링에 성공하면 마음이 움직인다)', col, sp.id);
+  // a talk that went well still leaves something behind: the creature lets slip what hurts it
+  const b = st.bestiary[sp.id];
+  const hidden = (Object.keys(sp.affinity) as (keyof typeof sp.affinity)[]).filter((k) => !b.known.includes(k));
+  if (enemy.mood >= 2 && hidden.length) {
+    b.known.push(...hidden);
+    ui.refreshAffinity();
+    await ui.say(name, TELL[sp.personality] ?? '...약한 곳? 말해 줄까 말까.', col, sp.id);
+    await ui.say('시스템', `${name}의 약점·내성을 알아냈다.`, '#9aa2ad');
+  }
+  // the timid bolt when it goes badly
+  if (sp.personality === 'timid' && !opts.cornered && enemy.mood < 0 && Math.random() < 0.4) {
+    await ui.say(name, '히익—! (도망쳤다)', col, sp.id, 'angry');
+    ui.closeDialog();
+    return { outcome: 'left', chance };
+  }
   ui.closeDialog();
   return { outcome: 'failed', chance };
 }
+
+const VOUCH_SAME: Record<string, string> = {
+  timid: '찍찍! 이 사람들 무섭지 않아. 나 봐, 멀쩡하지?',
+  childish: '부글~ 얘들이랑 있으면 매일 놀 수 있어!',
+  proud: '이 몸이 인정한 자들이다. 너도 예를 갖춰라.',
+  curious: '이 사람들 따라다니면 모르는 게 매일 생겨!',
+  honorable: '내가 검을 맡긴 이들이다. 믿어도 좋다.',
+  greedy: '부오... 여기 있으면... 연료가 끊이지 않는다.',
+};
+const VOUCH_KIN: Record<string, string> = {
+  timid: '저, 저기... 이 사람들 착해. 진짜야.',
+  childish: '같이 가자~ 재밌다니까!',
+  proud: '흥, 이 몸 정도는 아니지만 쓸 만한 자들이다.',
+  curious: '흥미로운 일행이야. 관찰해 볼 가치가 있어.',
+  honorable: '이들의 검은 정직하다.',
+  greedy: '...대접은 나쁘지 않다.',
+};
+/** What a creature lets slip about its weak spots after a friendly talk. */
+const TELL: Record<string, string> = {
+  timid: '나, 나는... 차가운 거랑 찌릿한 게 제일 무서워...',
+  childish: '부글... 얼음은 싫어. 뭐든 다 굳어버리잖아.',
+  proud: '...이 몸의 갑각도 번개만은 어쩔 수 없지. 말하지 마라.',
+  curious: '내 불꽃은 차가운 거에 약해. 연구해 봐도 좋아.',
+  honorable: '기사는 약점을 숨기지 않는다. 내 태엽은 번개에 흐트러진다.',
+  greedy: '부오... 화로가 식는 건... 싫다...',
+};

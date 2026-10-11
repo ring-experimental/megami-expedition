@@ -427,3 +427,27 @@
 .pc-mech .sg.empty { opacity: 0.5; }
 .popup.bonus { font: 800 18px var(--f-num); color: var(--gold-hi); letter-spacing: 0.05em; text-shadow: 2px 2px 0 #000; }
 .popup.bonus.enemy { color: var(--crimson); }
+
+/* hold up (all enemies broken): the bible's ink language at full volume — a dark wash, slanted
+   portrait panels slamming in one by one, a shaking title. Choices are a blade list on top. */
+.holdup { position: absolute; inset: 0; z-index: 21; pointer-events: none; }
+.holdup .hu-wash { position: absolute; inset: 0; background: radial-gradient(ellipse at 60% 50%, rgba(11, 9, 7, 0.25), rgba(11, 9, 7, 0.85) 75%); animation: fadeIn 0.2s; }
+.holdup .hu-ink { position: absolute; left: -5%; right: -5%; top: 18%; height: 64%; transform: rotate(-9deg); opacity: 0.9; animation: huInk 0.45s var(--ease-settle) backwards; }
+.holdup .hu-ink svg, .holdup .hu-ink img { width: 100%; height: 100%; }
+@keyframes huInk { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.holdup .hu-panels { position: absolute; right: 4%; top: 12%; bottom: 14%; width: min(62%, 760px); display: flex; gap: 14px; transform: rotate(-9deg); }
+.holdup .hu-panel { position: relative; flex: 1; overflow: hidden; display: grid; place-items: center; clip-path: polygon(18% 0, 100% 0, 82% 100%, 0 100%);
+  background: color-mix(in srgb, var(--c) 55%, var(--ink-0)); box-shadow: inset 0 0 0 4px var(--gold); font: 900 90px var(--f-cmd); color: var(--bone);
+  animation: huPanel 0.32s var(--ease-pop) backwards; animation-delay: calc(0.16s + var(--i) * 0.12s); }
+.holdup .hu-panel img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; }
+.holdup .hu-panel::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 4px var(--gold); clip-path: polygon(18% 0, 100% 0, 82% 100%, 0 100%); }
+@keyframes huPanel { from { transform: translate(140%, -30%) scale(1.3); opacity: 0; } 70% { transform: translate(-4%, 1%); opacity: 1; } }
+.holdup .hu-title { position: absolute; left: 4%; top: 13%; transform: rotate(-9deg); animation: huTitle 0.4s var(--ease-pop) backwards; animation-delay: calc(0.3s + var(--n, 3) * 0.12s); }
+.holdup .hu-title span { display: block; font: 400 96px/0.9 var(--f-ink); color: var(--gold-hi); text-shadow: 6px 6px 0 #000; letter-spacing: 0.02em; }
+.holdup .hu-title small { display: inline-block; margin-top: 10px; padding: 3px 18px; font: 800 17px var(--f-cmd); color: var(--ink-0); background: var(--gold-hi); }
+@keyframes huTitle { from { transform: rotate(-9deg) scale(2.2); opacity: 0; } 60% { transform: rotate(-11deg) scale(0.94); opacity: 1; } 80% { transform: rotate(-8deg) scale(1.03); } }
+.holdup.out { animation: huOut 0.3s forwards; }
+@keyframes huOut { to { opacity: 0; transform: translateX(-6%); } }
+.allout-flash { position: absolute; inset: 0; z-index: 23; pointer-events: none; display: grid; place-items: center; }
+.allout-flash span { font: 400 120px var(--f-ink); color: var(--gold-hi); text-shadow: 8px 8px 0 #000; transform: rotate(-8deg); animation: huTitle 0.4s var(--ease-pop) backwards; }
+.battle-holdup .cmd-blades { z-index: 22; }

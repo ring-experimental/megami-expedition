@@ -455,6 +455,44 @@ export class BattleUI {
   }
 
   // -------------------------------------------------------------------------
+  // Hold up (all enemies broken) — the party closes in: slanted portrait panels slam in one by
+  // one over an ink wash, then the title. Stays up behind the choice; close() folds it away.
+  // -------------------------------------------------------------------------
+  async holdUp(party: BUnit[]) {
+    const panels = party.map((u, i) => {
+      const bust = artSrc('portraits/cutin_' + u.pid);
+      return `<div class="hu-panel" style="--i:${i};--c:${u.color}">${bust ? `<img class="pimg" src="${bust}" alt="">` : portraitInner(u.pid, u.name)}</div>`;
+    }).join('');
+    const e = el('div', 'holdup', `<div class="hu-wash"></div><div class="hu-ink">${img(artSrc('ui/ink_band'), INK_SVG)}</div>
+      <div class="hu-panels" style="--n:${party.length}">${panels}</div>
+      <div class="hu-title"><span>Hold Up</span><small>적 전원 브레이크 — 포위했다!</small></div>`, this.root);
+    e.style.setProperty('--n', String(party.length));
+    this.ui.root.classList.add('battle-holdup');
+    Sfx.play('advantage');
+    party.forEach((_, i) => this.tl.wait(0.16 + i * 0.12).then(() => Sfx.play('hit_heavy')));
+    await this.tl.wait(0.25 + party.length * 0.12 + 0.35);
+    Sfx.play('break');
+    return {
+      close: async () => { e.classList.add('out'); this.ui.root.classList.remove('battle-holdup'); await this.tl.wait(0.3); e.remove(); },
+    };
+  }
+
+  /** One huge ink word over everything (all-out attack finish). */
+  async inkWord(text: string, hold = 0.7) {
+    const e = el('div', 'allout-flash', `<span>${text}</span>`, this.root);
+    await this.tl.wait(hold);
+    e.remove();
+  }
+
+  /** Blade list at a fixed spot (hold-up choices sit beside the portrait panels). */
+  async menuAt<T>(title: string, items: MenuItem<T>[], x: number, yFrac: number, opts: { cancellable?: boolean } = {}) {
+    this.bladeSpot = { x, y: (this.ui.height / this.ui.scale) * yFrac };
+    const v = await this.menuSelect(title, items, opts);
+    this.bladeSpot = null;
+    return v;
+  }
+
+  // -------------------------------------------------------------------------
   // Target selection
   // -------------------------------------------------------------------------
   selectTarget(units: BUnit[], opts: { all?: boolean; onHover?: (u: BUnit | 'all') => void; camera: THREE.Camera }): Promise<BUnit | 'all' | null> {

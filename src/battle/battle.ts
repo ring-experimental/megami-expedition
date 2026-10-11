@@ -68,6 +68,8 @@ export class BattleMode {
   private actionTempo = 1;
   /** a weakness hit this action already pulled the actor's next turn forward */
   private pulled = false;
+  /** Hold-up already offered for the current all-broken state (re-arms once any enemy recovers). */
+  private holdUpSpent = false;
   /** Feats tallied for the tactical bonus (victory EXP / 기어 multiplier). */
   private feats = { parries: 0, counters: 0, weak: 0, breaks: 0, dmgTaken: 0, partyTurns: 0 };
 
@@ -126,6 +128,7 @@ export class BattleMode {
     this.feats = { parries: 0, counters: 0, weak: 0, breaks: 0, dmgTaken: 0, partyTurns: 0 };
     this.turnNo = 0;
     this.slotBonus.clear();
+    this.holdUpSpent = false;
     for (const u of this.units) this.scene.remove(u.obj);
     this.units = [];
     this.fx.clear();
@@ -203,6 +206,8 @@ export class BattleMode {
         if (r === 'fled') { result = 'fled'; break; }
         // heavy skills push the next turn back, quick actions and weakness hits pull it forward
         u.ct += (this.actionTempo - 1) * (100 / u.speed());
+        const h = await this.maybeHoldUp();
+        if (h === 'fled') { result = 'victory'; break; }
       } else {
         await this.enemyTurn(u);
       }
@@ -308,6 +313,7 @@ export class BattleMode {
       await this.tl.wait(0.4);
     }
     if (u.broken) {
+      this.holdUpSpent = false; // an enemy is getting up: the next full break can hold up again
       u.broken = false;
       u.brk = 0;
       this.setCam(u.centerPos().add(new THREE.Vector3(3, 2, 6)), u.centerPos(), 4);
@@ -642,14 +648,15 @@ export class BattleMode {
     await this.tl.wait(0.6);
   }
 
-  private async doTalk(u: BUnit, e: BUnit): Promise<boolean> {
+  private async doTalk(u: BUnit, e: BUnit, cornered = false): Promise<boolean> {
     // two-shot camera
     const mid = u.pos.clone().lerp(e.pos, 0.5);
     this.setCam(mid.clone().add(new THREE.Vector3(6.5, 2.4, 1.5)), mid.clone().add(new THREE.Vector3(0, 1.1, 0)), 4);
     u.anim.play('talk');
     e.anim.play('talk');
     await this.tip('talk');
-    const res = await negotiate(this.bui, u, e, State.current.difficulty !== 'hard');
+    const allies = this.party.filter((p) => !p.ko && p !== u);
+    const res = await negotiate(this.bui, u, e, State.current.difficulty !== 'hard', { cornered, allies });
     const st = State.current;
     switch (res.outcome) {
       case 'blocked':
@@ -696,6 +703,95 @@ export class BattleMode {
     e.removed = true;
     e.obj.visible = false;
     if (e.ui.plate) e.ui.plate.style.display = 'none';
+  }
+
+  // =====================================================================
+  // Hold up (Persona-style): every enemy still standing is broken after a party action
+  // =====================================================================
+  private async maybeHoldUp(): Promise<'done' | 'fled' | null> {
+    const foes = this.enemies.filter((e) => e.alive);
+    // a first strike breaks everyone for free — the hold-up has to be earned by breaking someone here
+    if (this.holdUpSpent || !foes.length || !foes.every((e) => e.broken) || this.feats.breaks === 0) return null;
+    this.holdUpSpent = true;
+    const party = this.party.filter((p) => !p.ko);
+    // the party closes in around the enemies
+    this.camOverview();
+    await Promise.all(party.map((p, i) => this.moveUnit(p, new THREE.Vector3((i - (party.length - 1) / 2) * 2.6, 0, ENEMY_Z + 3.4), 0.3, this.enemyCenter())));
+    await this.tip('holdup');
+    const cut = await this.bui.holdUp(party);
+    const talkable = foes.filter((e) => !e.species!.talkGate || e.broken);
+    const loot = foes.reduce((s, e) => s + e.species!.money, 0);
+    const choice = await this.bui.menuAt<string>('Hold Up', [
+      { label: '총공격', right: '전원', desc: '파티 전원이 덤벼들어 적 전체에 큰 피해. 마지막에 타이밍을 맞추면 위력 상승.', value: 'allout' },
+      { label: '포위 협상', right: '▶', desc: '도망칠 곳 없는 적과 협상한다. 영입 확률 +25%, 화를 내도 달아나거나 격노하지 않는다.', value: 'talk', disabled: !talkable.length },
+      { label: '갈취', right: `⚙ ~${Math.round(loot * 1.5)}`, desc: '기어와 물건을 받아내고 놓아준다. 전투가 끝나지만 경험치는 없다.', value: 'extort' },
+      { label: '그대로 계속', desc: '포위를 풀고 전투를 계속한다.', value: 'none' },
+    ], 40, 0.55, { cancellable: false });
+    await cut.close();
+    if (choice === 'allout') await this.allOutAttack(party, foes);
+    else if (choice === 'talk') {
+      const target = talkable.length === 1 ? talkable[0] : await this.bui.selectTarget(talkable, { camera: this.camera, onHover: (x) => x !== 'all' && this.camTarget(party[0], x) });
+      if (target && target !== 'all') {
+        const talker = party.find((p) => p.hero?.id === 'kai') ?? party[0];
+        await this.doTalk(talker, target, true);
+      }
+    } else if (choice === 'extort') {
+      await this.extort(foes);
+      return 'fled';
+    }
+    for (const p of party) await this.returnHome(p);
+    this.updateOrder();
+    this.bui.refresh();
+    return 'done';
+  }
+
+  private async allOutAttack(party: BUnit[], foes: BUnit[]) {
+    Sfx.play('counter');
+    const c = this.enemyCenter();
+    this.setCam(c.clone().add(new THREE.Vector3(0, 6, 9)), c.clone().add(new THREE.Vector3(0, 1, 0)), 3);
+    // a brawl cloud: everyone dashes through the pack, slashes everywhere
+    for (let k = 0; k < 14; k++) {
+      const p = party[k % party.length];
+      const t = foes[k % foes.length];
+      const yaw = rand(0, Math.PI * 2);
+      p.pos.copy(t.pos).add(new THREE.Vector3(Math.sin(yaw) * (t.radius + 0.8), 0, Math.cos(yaw) * (t.radius + 0.8)));
+      p.obj.rotation.y = yaw + Math.PI;
+      p.anim.play(['slash1', 'slash2', 'slash3'][k % 3], 1.6);
+      this.fx.slash(t.centerPos(), rand(0, Math.PI * 2), k % 2 ? 0xffe9a0 : 0xbff6ff, 2.6, rand(-1, 1), 0.18);
+      this.fx.smoke.burst(t.pos.clone().add(new THREE.Vector3(0, 0.5, 0)), 6, { color: 0xd9c7a8, speed: 3, up: 0.6, life: 0.5, size: 0.5, sizeEnd: 1.4, alpha: 0.5 });
+      Sfx.play(k % 3 === 2 ? 'hit_heavy' : 'hit');
+      this.shake = 0.2;
+      await this.tl.wait(0.08);
+    }
+    // finishing beat: one QTE for the final blow
+    const qte = new QteSession(this.tl, this.diff);
+    this.sessions.push(qte);
+    const tEnd = this.tl.time + 0.8;
+    const ring = this.bui.ring(() => c.clone().add(new THREE.Vector3(0, 1.2, 0)), tEnd, 0.8, 'qte');
+    const grade = await new Promise<QteGrade>((res) => qte.add(tEnd, res));
+    ring.result(grade === 'perfect' ? 'PERFECT' : grade === 'good' ? 'GOOD' : 'MISS', grade);
+    qte.dispose();
+    this.sessions = this.sessions.filter((x) => x !== qte);
+    void this.bui.inkWord('Finish');
+    this.game.ui.flash('#fff', 140);
+    for (const t of foes) for (const p of party) {
+      this.hitUnit(p, t, { kind: p.stats.mag > p.stats.atk ? 'magic' : 'phys', element: p.hero?.basicElement ?? 'phys', power: 1.5, mult: QTE_MULT[grade], brk: 0 });
+    }
+    await this.tl.wait(0.8);
+  }
+
+  private async extort(foes: BUnit[]) {
+    const st = State.current;
+    const money = Math.round(foes.reduce((s, e) => s + e.species!.money, 0) * rand(1.2, 1.5));
+    const got: string[] = [];
+    for (const e of foes) {
+      const d = e.species!.drops[0];
+      if (d) { st.addItem(d.item); got.push(`${icon('item', d.item, ITEMS[d.item].icon)} ${ITEMS[d.item].name}`); }
+    }
+    st.money += money;
+    Sfx.play('chest');
+    this.game.ui.banner('갈취 성공', `⚙ ${money} 기어${got.length ? ' · ' + got.join(' · ') : ''}`, 'gold', 2200);
+    await Promise.all(foes.map((e) => this.vanish(e)));
   }
 
   private async doFlee(): Promise<boolean> {
