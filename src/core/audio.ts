@@ -8,7 +8,7 @@ type SfxName =
   | 'break' | 'stun' | 'magic' | 'fire' | 'frost' | 'volt' | 'heal' | 'buff'
   | 'battle_start' | 'ambush' | 'advantage' | 'victory' | 'defeat' | 'levelup'
   | 'recruit' | 'talk_fail' | 'talk_blip' | 'qte_perfect' | 'qte_good' | 'qte_miss'
-  | 'alert' | 'step' | 'chest' | 'rest' | 'ko';
+  | 'alert' | 'step' | 'chest' | 'rest' | 'ko' | 'ink_slash';
 
 class AudioSynth {
   ctx: AudioContext | null = null;
@@ -104,6 +104,8 @@ class AudioSynth {
       case 'volt': for (let i = 0; i < 5; i++) this.noise(0.05, 0.4, { type: 'bandpass', freq: 1500 + Math.random() * 3000, q: 4, delay: i * 0.045 }); this.tone(60, 0.3, 'sawtooth', 0.12); break;
       case 'heal': this.arp([523, 659, 784, 1046], 0.06, 'sine', 0.1, 0.4); break;
       case 'buff': this.arp([392, 523, 659], 0.05, 'triangle', 0.08, 0.3); break;
+      // a blade through paper: bright hiss sweeping down + a dull thump under it
+      case 'ink_slash': this.noise(0.14, 0.5, { type: 'bandpass', freq: 6000, to: 1200, q: 2 }); this.tone(90, 0.18, 'sine', 0.2, { to: 40 }); break;
       case 'battle_start': this.noise(0.5, 0.4, { type: 'bandpass', freq: 400, to: 4000, q: 1 }); this.tone(110, 0.6, 'sawtooth', 0.12, { to: 440 }); break;
       case 'advantage': this.arp([523, 659, 784, 1046, 1318], 0.05, 'square', 0.07, 0.2); break;
       case 'ambush': this.arp([466, 440, 415, 392], 0.08, 'sawtooth', 0.09, 0.25); break;

@@ -87,8 +87,7 @@ export class Menus {
         if (k === 'normal') c.dataset.padFirst = '';
         c.onclick = () => {
           Sfx.play('ui_ok');
-          this.title?.classList.add('out');
-          setTimeout(() => { this.title?.remove(); this.title = null; }, 500);
+          this.hideTitle();
           this.game.newGame(k);
         };
       });
@@ -102,6 +101,14 @@ export class Menus {
       back();
     };
     main();
+  }
+
+  /** Fade the title screen out (no-op if it is already gone or going). */
+  hideTitle() {
+    const t = this.title;
+    if (!t || t.classList.contains('out')) return;
+    t.classList.add('out');
+    setTimeout(() => { t.remove(); if (this.title === t) this.title = null; }, 500);
   }
 
   /** Gamepad navigation for whichever DOM menu is open (called every frame by Game). */
@@ -166,10 +173,7 @@ export class Menus {
         setTimeout(() => { titleBtn.classList.remove('armed'); titleBtn.textContent = '타이틀로'; }, 3000);
         return;
       }
-      this.hidePause();
-      this.game.paused = false;
-      this.game.field.exit();
-      this.game.showTitle();
+      this.game.setMode('title'); // leaving the field also closes this menu
     };
     const tabs = p.querySelector('.mn-tabs') as HTMLElement;
     PAUSE_TABS.forEach(([id, label], i) => {
