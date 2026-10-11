@@ -16,7 +16,7 @@ import type { Game } from '../game/game';
 import type { FieldEnemy } from '../field/fieldEnemy';
 import { BUnit } from './bunit';
 import { BattleUI, type MenuItem, type VictoryRow } from './battleUI';
-import { DefenseSession, QTE_MULT, QteSession, type DefenseResult, type QteGrade } from './timing';
+import { DefenseSession, QTE_MULT, QteSession, spaceHits, type DefenseResult, type QteGrade } from './timing';
 import { negotiate } from './negotiation';
 import { TIPS, type TipId } from './tips';
 import { icon } from '../ui/art';
@@ -660,7 +660,7 @@ export class BattleMode {
     const windup = rand(mv.windup[0], mv.windup[1]);
     e.anim.play('windup', 0.5 / windup);
     const t0 = this.tl.time + windup;
-    const hitTimes = mv.hits.map((h) => t0 + h);
+    const hitTimes = spaceHits(mv.hits).map((h) => t0 + h);
     const def = new DefenseSession(this.tl, this.diff);
     this.sessions.push(def);
     this.bui.showDefHint(true);
