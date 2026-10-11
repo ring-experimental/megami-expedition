@@ -48,8 +48,10 @@ export class Menus {
     this.title = t;
     const logo = logoSrc();
     const feather = img(artSrc('ui/feather'), FEATHER_SVG);
+    // same brass gear art as the battle command ring; the SVG gears stay as the fallback
+    const gear = artSrc('ui/gear_ring');
     t.innerHTML = `
-      <div class="ts-gears"><div class="ts-gear big">${gearSvg(16)}</div><div class="ts-gear small">${gearSvg(11)}</div></div>
+      <div class="ts-gears"><div class="ts-gear big">${img(gear, gearSvg(16))}</div><div class="ts-gear small">${img(gear, gearSvg(11))}</div></div>
       <div class="ts-feathers">${[0, 1, 2].map((i) => `<div class="ts-feather" style="--i:${i}">${feather}</div>`).join('')}</div>
       <div class="ts-logo">${logo ? `<img class="logo-img" src="${logo}" alt="MEGAMI EXPEDITION">` : '<h1>MEGAMI<br/>EXPEDITION</h1>'}
         <div class="ts-sub"><span>증기와 에테르의 원정대</span><small>Prototype</small></div></div>

@@ -8,7 +8,7 @@
 /* gears: two brass wheels meshing slowly behind the logo (machine language, always on) */
 .ts-gears { left: 0; top: 0; width: 720px; height: 520px; pointer-events: none; opacity: 0.42; }
 .ts-gear { position: absolute; }
-.ts-gear svg { display: block; width: 100%; height: 100%; }
+.ts-gear svg, .ts-gear img { display: block; width: 100%; height: 100%; }
 .ts-gear.big { left: 210px; top: -60px; width: 470px; height: 470px; animation: spin 90s linear infinite; }
 .ts-gear.small { left: 70px; top: 300px; width: 240px; height: 240px; animation: spin 50s linear infinite reverse; }
 @keyframes spin { to { transform: rotate(360deg); } }
