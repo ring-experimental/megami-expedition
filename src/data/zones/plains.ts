@@ -76,9 +76,10 @@ const SPAWNS: SpawnDef[] = [
   // sq01: while the mail bag is missing, the yard's rats are led by a 'boss' carrying it
   { id: 's_rat2', x: -34, z: 20, formation: ['cograt', 'cograt', 'cograt'], wander: 6, when: () => !(F('sq01_accepted') && !F('sq01_bag_found')) },
   { id: 's_rat2_boss', x: -34, z: 20, formation: ['cograt', 'cograt', 'cograt'], wander: 4, when: () => F('sq01_accepted') && !F('sq01_bag_found') },
-  // m03: the rat hiding behind the lamp takes s_rat3's place until Tick joins
-  { id: 's_rat3', x: 13, z: 40, formation: ['cograt'], wander: 5, when: () => !(F('ch1_lyra_joined') && !F('ch1_tick_recruited')) },
-  { id: 'ev_tick', x: 13, z: 41.5, formation: ['cograt'], wander: 0.5, afterFlag: 'ch1_lyra_joined', untilFlag: 'ch1_tick_recruited', passive: true },
+  { id: 's_rat3', x: 13, z: 40, formation: ['cograt'], wander: 5 },
+  // m03: the rat cowers behind roadside lamp 4 (−4.2, 12), on the far side from the road — the lamp
+  // nearest the pipe yard, where Lyra spots it right after m02
+  { id: 'ev_tick', x: -6.4, z: 12.6, formation: ['cograt'], wander: 0.3, afterFlag: 'ch1_lyra_joined', untilFlag: 'ch1_tick_recruited', passive: true },
   { id: 'sp_moth1', x: 40, z: 12, formation: ['prism_moth', 'prism_moth'], wander: 6, afterFlag: 'ch1_hub_arrived' },
   { id: 'sp_moth2', x: 30, z: -14, formation: ['prism_moth', 'wisp'], wander: 6, afterFlag: 'ch1_hub_arrived' },
   { id: 's_slime1', x: 18, z: 20, formation: ['slime', 'cograt'], wander: 6 },

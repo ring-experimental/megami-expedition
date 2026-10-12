@@ -34,3 +34,5 @@ body.pad .fd-opt .n { display: none; }
 .fdlg.black { z-index: 51; background: var(--ink-0); }
 .fdlg.black .fd-band::before { background: transparent; border-color: transparent; box-shadow: none; }
 .fdlg.black .fd-text { font-size: 22px; }
+/* the backlog (ui/backlog.ts) covers the conversation; the band steps away while it is open */
+.fdlg.log-open { visibility: hidden; }

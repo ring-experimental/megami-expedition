@@ -7,6 +7,7 @@ import { State } from '../game/state';
 import type { UI } from '../ui/ui';
 import { artSrc, icon, portraitInner, type Expression } from '../ui/art';
 import { gearSvg } from '../ui/ornaments';
+import { Backlog } from '../ui/backlog';
 import { bindInput, pb } from '../ui/glyph';
 import type { Timeline } from '../core/timeline';
 import type { BUnit } from './bunit';
@@ -597,6 +598,7 @@ export class BattleUI {
   }
 
   endTalk() {
+    Backlog.end();
     this.ui.root.classList.remove('battle-talk');
     this.talkPor?.remove();
     this.talkPor = null;
@@ -628,6 +630,7 @@ export class BattleUI {
   }
 
   async say(speaker: string, text: string, _color = '', pid = '', expr?: Expression) {
+    Backlog.add({ who: speaker, text, color: _color || undefined });
     this.dialog.classList.remove('hidden');
     if (pid && pid === this.talkPid) this.setExpression(expr);
     this.dialog.innerHTML = `${this.dialogHead(speaker, pid)}<div class="dl-text"></div><div class="dl-next"></div>`;
@@ -654,6 +657,7 @@ export class BattleUI {
 
   /** Question in the band, answers as a fan of blade cards above it. */
   choose(speaker: string, text: string, choices: string[], _color = '', pid = ''): Promise<number> {
+    Backlog.add({ who: speaker, text, color: _color || undefined });
     this.dialog.classList.remove('hidden');
     this.dialog.classList.add('done');
     if (pid && pid === this.talkPid) this.setExpression();
@@ -695,6 +699,7 @@ export class BattleUI {
     const fan = this.talkFan;
     this.talkFan = null;
     this.tl.wait(0.3).then(() => fan?.remove());
+    Backlog.add({ who: '', text: c.els[c.index].querySelector('.fc-text')?.textContent ?? '', kind: 'pick' });
     c.resolve(c.index);
   }
 

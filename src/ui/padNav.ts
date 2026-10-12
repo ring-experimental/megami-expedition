@@ -10,7 +10,7 @@ export type Adjustable = HTMLElement & { adjust?: (dir: number) => void };
 /** Keyboard keys that drive menu focus (the pad has its own; the mouse just hovers). */
 const KB = {
   left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'], up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
-  ok: ['Enter', 'NumpadEnter', 'Space'], prevTab: ['KeyQ'], nextTab: ['KeyE'],
+  ok: ['Enter', 'NumpadEnter', 'Space'], prevTab: ['KeyQ'], nextTab: ['KeyE'], prevGroup: ['KeyZ'], nextGroup: ['KeyC'],
 };
 
 /**
@@ -29,7 +29,8 @@ function installNavFocus() {
 /**
  * Pad and keyboard focus navigation for DOM menus (title, pause). D-pad/stick or arrows/WASD move
  * a `.pad-focus` highlight to the nearest item in that direction, A or Enter/Space clicks it, ←/→
- * adjust a focused setting row, LB/RB or Q/E switch tabs, Tab/Shift+Tab step through the items.
+ * adjust a focused setting row, LB/RB or Q/E switch tabs, LT/RT or Z/C switch tab groups,
+ * Tab/Shift+Tab step through the items.
  * The mouse moves the same focus by hovering, so keys continue from where the pointer was.
  * Uses a class instead of DOM focus; Menus suppresses the browser's own Enter/Space/Tab handling.
  */
@@ -64,7 +65,7 @@ export class PadNav {
    * @param back keyboard keys that go back here (the pad always uses B). Esc on the pause menu
    *   is left to Game, which guards against the Esc that released the pointer lock.
    */
-  update(root: HTMLElement, onBack: () => void, onTab?: (dir: number) => void, back: string[] = ['Escape', 'Backspace']) {
+  update(root: HTMLElement, onBack: () => void, onTab?: (dir: number) => void, back: string[] = ['Escape', 'Backspace'], onGroup?: (dir: number) => void) {
     if (!this.hooked.has(root)) {
       this.hooked.add(root);
       // hovering moves the focus (silently), so the highlight and the keys agree
@@ -75,7 +76,7 @@ export class PadNav {
     }
     const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((e) => e.offsetParent !== null && !(e as HTMLButtonElement).disabled);
     if (!items.length) return;
-    const kbUsed = [KB.left, KB.right, KB.up, KB.down, KB.ok, KB.prevTab, KB.nextTab, ['Tab']].some((c) => Input.pressed(...c));
+    const kbUsed = [KB.left, KB.right, KB.up, KB.down, KB.ok, KB.prevTab, KB.nextTab, KB.prevGroup, KB.nextGroup, ['Tab']].some((c) => Input.pressed(...c));
     if (kbUsed) document.body.classList.add('navfocus');
     if (!this.cur || !items.includes(this.cur)) {
       const fallback = this.lastIndex < 0 ? items.find((e) => e.dataset.padFirst !== undefined) ?? items[0] : items[Math.min(this.lastIndex, items.length - 1)];
@@ -110,6 +111,8 @@ export class PadNav {
       onBack();
     } else if (onTab && Input.pressed('PadLB', 'PadRB', ...KB.prevTab, ...KB.nextTab)) {
       onTab(Input.pressed('PadLB', ...KB.prevTab) ? -1 : 1);
+    } else if (onGroup && Input.pressed('PadLT', 'PadRT', ...KB.prevGroup, ...KB.nextGroup)) {
+      onGroup(Input.pressed('PadLT', ...KB.prevGroup) ? -1 : 1);
     }
     if (this.cur) this.lastIndex = Math.max(0, items.indexOf(this.cur));
   }

@@ -14,6 +14,7 @@ import { padName } from '../ui/glyph';
 import { battleCut } from '../ui/battleCut';
 import { FieldMode } from '../field/field';
 import { BattleMode, type BattleReport, type BattleRequest, type BattleResult } from '../battle/battle';
+import { Backlog } from '../ui/backlog';
 import { Story } from '../story/story';
 import { GameState, State } from './state';
 import { Save, SLOT_NAME, type SlotId } from './save';
@@ -93,6 +94,8 @@ export class Game {
     await new Promise((r) => setTimeout(r, 50));
     this.story = new Story(this);
     this.field = new FieldMode(this);
+    // backlog scenes are labelled with where they happened
+    Backlog.place = () => `${this.field.zone?.name ?? ''}${this.mode === 'battle' ? ' · 전투' : ''}`;
     this.battle = new BattleMode(this);
     this.menus = new Menus(this);
     this.applyQuality();
@@ -265,6 +268,7 @@ export class Game {
 
   newGame(diff: Difficulty) {
     State.current = new GameState();
+    Backlog.clear();
     State.current.difficulty = diff;
     this.ui.fadeOut(300).then(() => {
       this.field.syncFromState(); // fresh state: plains, story flags all unset
@@ -304,6 +308,7 @@ export class Game {
       this.ui.toast('저장 데이터를 읽지 못했습니다 (손상되었거나 더 새로운 버전).', 'red', 5000);
       return false;
     }
+    Backlog.clear();
     this.field.syncFromState();
     if (this.mode === 'field') {
       if (this.paused) { this.paused = false; this.menus.hidePause(); Input.consumePressed(); }

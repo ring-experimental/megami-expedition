@@ -4,7 +4,8 @@ import { State } from '../game/state';
 import type { UI } from './ui';
 import type { FieldMode } from '../field/field';
 import type { FieldEnemy } from '../field/fieldEnemy';
-import type { ZoneDef } from '../data/zones';
+import { ZONES, type GateDef, type ZoneDef } from '../data/zones';
+import type { Pos, QuestView } from '../story/chapter1';
 import { Input, type InputState } from '../core/input';
 import { portraitInner } from './art';
 import { pb, type PadButton } from './glyph';
@@ -94,14 +95,50 @@ export class FieldHud {
     this.zoneName.textContent = `${z.name} · ${z.sub}`;
   }
 
-  goalPos: { zone: string; x: number; z: number } | null = null;
+  goalPos: Pos | null = null;
+  /** the sub-quest picked with 수첩 → 찾기 (one at a time) */
+  questPos: Pos | null = null;
 
-  /** Objective tracker: one line under the minimap (empty hides it), plus an optional map marker. */
-  setGoal(html: string, pos: { zone: string; x: number; z: number } | null = null) {
+  /**
+   * Objective tracker under the minimap: the main objective, plus the tracked quest's current step
+   * as a second row. Each target gets a minimap marker (filled = main, hollow = quest) and a needle
+   * on the compass rim; a target in another zone is pointed at through the gate that leads there.
+   */
+  setGoal(html: string, pos: Pos | null = null, quest: QuestView | null = null) {
     this.goalPos = pos;
+    this.questPos = quest?.pos ?? null;
     if (!this.goal) this.goal = el('div', 'fh-goal', '', this.root);
-    this.goal.innerHTML = html ? `<span class="fg-k">목표</span>${html}` : '';
-    this.goal.style.display = html ? '' : 'none';
+    const via = (p: Pos | null) => { const g = p && this.route(p); return g ? `<span class="fg-via">${g.label} 방면</span>` : ''; };
+    this.goal.innerHTML = (html ? `<div class="fg-row"><span class="fg-k">목표</span>${html}${via(pos)}</div>` : '')
+      + (quest ? `<div class="fg-row q"><span class="fg-k">의뢰</span><b>${quest.title}</b><span class="fg-step">${quest.state === 'open' ? `${quest.giver.replace(/ \(.*\)$/, '')}에게 의뢰 받기` : quest.step}</span>${via(quest.pos)}</div>` : '');
+    this.goal.style.display = html || quest ? '' : 'none';
+  }
+
+  /** The gate in the current zone on the way to `p`'s zone (null when `p` is here or unreachable). */
+  private route(p: Pos): GateDef | null {
+    const from = this.field.zone?.id;
+    if (!from || p.zone === from) return null;
+    // breadth-first over the zone graph; remember the first gate taken out of the current zone
+    const seen = new Set([from]);
+    let frontier: [string, GateDef][] = ZONES[from].gates.map((g) => [g.to, g]);
+    while (frontier.length) {
+      const next: [string, GateDef][] = [];
+      for (const [z, first] of frontier) {
+        if (z === p.zone) return first;
+        if (seen.has(z) || !ZONES[z]) continue;
+        seen.add(z);
+        for (const g of ZONES[z].gates) next.push([g.to, first]);
+      }
+      frontier = next;
+    }
+    return null;
+  }
+
+  /** Where to point for a target: itself when it is in this zone, otherwise the gate toward it. */
+  private markerAt(p: Pos | null): { x: number; z: number } | null {
+    if (!p) return null;
+    if (p.zone === this.field.zone.id) return p;
+    return this.route(p);
   }
 
   setVisible(v: boolean) {
@@ -268,17 +305,8 @@ export class FieldHud {
       g.beginPath(); g.arc(tx(e.pos.x), tz(e.pos.z), r, 0, Math.PI * 2); g.fill();
       if (e.sp.tier !== 'weak') { g.strokeStyle = '#efe6d2'; g.lineWidth = 1; g.stroke(); }
     }
-    // objective marker: a gold diamond (or a rim chevron when it's in another zone / off the map)
-    const goal = this.goalPos;
-    if (goal && goal.zone === z.id) {
-      g.fillStyle = '#f2c94c';
-      g.strokeStyle = '#0b0907';
-      g.lineWidth = 1.5;
-      const gx = tx(goal.x), gz = tz(goal.z);
-      g.beginPath(); g.moveTo(gx, gz - 6); g.lineTo(gx + 5, gz); g.lineTo(gx, gz + 6); g.lineTo(gx - 5, gz); g.closePath(); g.fill(); g.stroke();
-    }
-    // player arrow
     const p = this.field.player;
+    // player arrow
     g.translate(tx(p.pos.x), tz(p.pos.z));
     g.rotate(-p.yaw + Math.PI);
     g.fillStyle = '#efe6d2';
@@ -286,5 +314,50 @@ export class FieldHud {
     g.lineWidth = 1.5;
     g.beginPath(); g.moveTo(0, -7); g.lineTo(5, 5.5); g.lineTo(0, 3); g.lineTo(-5, 5.5); g.closePath(); g.fill(); g.stroke();
     g.restore();
+    this.drawMarkers(tx, tz);
+  }
+
+  /**
+   * Objective markers, drawn last so nothing covers them: a large gold diamond (main) / hollow
+   * diamond (tracked quest) with a pulsing ring, at the gate toward the target when it is in another
+   * zone. A needle on the compass rim points from the player toward each target farther than 30 m.
+   */
+  private drawMarkers(tx: (x: number) => number, tz: (z: number) => number) {
+    const g = this.map;
+    const R = 90;
+    const p = this.field.player;
+    const pulse = (performance.now() / 1200) % 1;
+    const marks: [{ x: number; z: number } | null, boolean][] = [[this.markerAt(this.questPos), false], [this.markerAt(this.goalPos), true]];
+    for (const [m, main] of marks) {
+      if (!m) continue;
+      const gx = tx(m.x), gz = tz(m.z);
+      // pulse ring: grows and fades
+      g.save();
+      g.globalAlpha = 1 - pulse;
+      g.strokeStyle = '#f2c94c';
+      g.lineWidth = 2;
+      g.beginPath(); g.arc(gx, gz, 8 + pulse * 14, 0, Math.PI * 2); g.stroke();
+      g.restore();
+      const diamond = (s: number) => { g.beginPath(); g.moveTo(gx, gz - s * 1.2); g.lineTo(gx + s, gz); g.lineTo(gx, gz + s * 1.2); g.lineTo(gx - s, gz); g.closePath(); };
+      g.fillStyle = '#0b0907';
+      diamond(10); g.fill();
+      g.fillStyle = '#f2c94c';
+      diamond(7.5); g.fill();
+      if (!main) { g.fillStyle = '#0b0907'; diamond(4); g.fill(); }
+      const dx = m.x - p.pos.x, dz = m.z - p.pos.z;
+      if (dx * dx + dz * dz < 30 * 30) continue;
+      const a = Math.atan2(dz, dx);
+      const rr = R - 10;
+      g.save();
+      g.translate(R + Math.cos(a) * rr, R + Math.sin(a) * rr);
+      g.rotate(a);
+      g.beginPath(); g.moveTo(7, 0); g.lineTo(-6, -6.5); g.lineTo(-2.5, 0); g.lineTo(-6, 6.5); g.closePath();
+      g.lineWidth = 2;
+      g.strokeStyle = '#0b0907';
+      g.fillStyle = main ? '#f2c94c' : '#0b0907';
+      g.fill(); g.stroke();
+      if (!main) { g.strokeStyle = '#f2c94c'; g.lineWidth = 1.5; g.stroke(); }
+      g.restore();
+    }
   }
 }

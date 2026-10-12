@@ -131,9 +131,20 @@ export class Story {
   refresh() {
     const f = this.game.field;
     if (!f) return;
-    f.hud.setGoal(this.ch.goal());
+    const o = this.ch.objective();
+    f.hud.setGoal(o.text, o.pos, this.trackedQuest());
     f.refreshActors();
     f.refreshLights();
+  }
+
+  /** The quest picked with 수첩 → 찾기, while it is still open or in progress (finished ones untrack themselves). */
+  trackedQuest() {
+    const id = this.st.tracked;
+    if (!id) return null;
+    const q = this.ch.quests().find((v) => v.id === id);
+    if (q && (q.state === 'open' || q.state === 'active')) return q;
+    this.st.tracked = null;
+    return null;
   }
 
   // ---------------------------------------------------------------------

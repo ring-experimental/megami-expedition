@@ -55,6 +55,8 @@ export class GameState {
   bond: Record<string, number> = { lyra: 1 };
   /** 속성 결정 by element. */
   crystals: Record<Element, number> = { phys: 0, fire: 0, frost: 0, volt: 0, aether: 0 };
+  /** 수첩 → 찾기: the one sub-quest the HUD points at (null = main objective only). */
+  tracked: string | null = null;
   /** Story / quest progress: free-form counters and switches keyed by id. */
   flags: Record<string, number> = {};
 

@@ -7,6 +7,7 @@ import { Input } from '../core/input';
 import { bindInput, padName, pb } from './glyph';
 import { PadNav, type Adjustable } from './padNav';
 import { controlsPage } from './controlsHelp';
+import { Backlog } from './backlog';
 import './menus.css';
 import './title.css';
 
@@ -28,14 +29,30 @@ const STAT_KO: Record<string, string> = { hp: 'HP', atk: '공격', mag: '마력'
 const costHtml = (c: Partial<Record<Element | 'any', number>>) => Object.entries(c).map(([e, n]) => (e === 'any' ? `아무 결정 ${n}` : `${icon('el', e, ELEMENT_NAME[e as Element])}${n}`)).join(' ');
 const needHtml = (c: Partial<Record<Element, number>>) => Object.entries(c).map(([e, n]) => `${ELEMENT_NAME[e as Element]} ${n}`).join(' + ');
 
-const ALL_TABS: [string, string][] = [['journal', '수첩'], ['party', '파티 편성'], ['board', '부품'], ['workshop', '공방'], ['bestiary', '몬스터 도감'], ['items', '소지품'], ['save', '저장 · 불러오기'], ['settings', '설정'], ['controls', '조작법']];
-/** The 공방 tab appears once the party has reached the workshop (story flag). */
-const pauseTabs = () => ALL_TABS.filter(([id]) => (id !== 'workshop' || State.current.flag('workshop')) && (id !== 'board' || State.current.flag('ch1_hub_arrived')));
+/**
+ * Pause menu tabs in four groups: the wedge lists the groups, the chosen group's tabs run along the
+ * top of the content (LT/RT · Z/C switch groups, LB/RB · Q/E switch tabs inside a group).
+ */
+const GROUPS: { id: string; label: string; tabs: [string, string][] }[] = [
+  { id: 'expedition', label: '원정', tabs: [['journal', '수첩'], ['log', '대사 기록'], ['bestiary', '몬스터 도감']] },
+  { id: 'company', label: '동료', tabs: [['party', '파티 편성'], ['board', '부품'], ['workshop', '공방']] },
+  { id: 'items', label: '소지품', tabs: [['items', '소지품']] },
+  { id: 'system', label: '시스템', tabs: [['save', '저장 · 불러오기'], ['settings', '설정'], ['controls', '조작법']] },
+];
+/** The 공방 / 부품 tabs appear once the story reaches them; a group with no tabs left is hidden. */
+const tabOpen = (id: string) => (id !== 'workshop' || !!State.current.flag('workshop')) && (id !== 'board' || !!State.current.flag('ch1_hub_arrived'));
+const pauseGroups = () => GROUPS.map((g) => ({ ...g, tabs: g.tabs.filter(([id]) => tabOpen(id)) })).filter((g) => g.tabs.length);
+const pauseTabs = () => pauseGroups().flatMap((g) => g.tabs);
+const groupOf = (tab: string) => pauseGroups().find((g) => g.tabs.some(([id]) => id === tab)) ?? pauseGroups()[0];
+/** The tab a group opens on: where it was last left, else its first tab. */
+const entryTab = (g: ReturnType<typeof pauseGroups>[number], last?: string) => (last && g.tabs.some(([id]) => id === last) ? last : g.tabs[0][0]);
 
 export class Menus {
   private title: HTMLElement | null = null;
   private pause: HTMLElement | null = null;
   private tab = 'party';
+  /** the tab each group was last left on, so switching groups returns there */
+  private lastTab: Record<string, string> = {};
   private nav = new PadNav();
   /**
    * Swapping a reserve member in while the party is full: 'ask' shows the confirm dialog, 'pick'
@@ -153,7 +170,7 @@ export class Menus {
     if (this.pause && this.partyPick && this.pickRoot?.isConnected) {
       this.nav.update(this.pickRoot, () => this.cancelPick(), undefined, ['Backspace']);
     } else if (this.pause) {
-      this.nav.update(this.pause, () => { Sfx.play('ui_back'); this.game.closePause(); }, (d) => this.cycleTab(d), ['Backspace']);
+      this.nav.update(this.pause, () => { Sfx.play('ui_back'); this.game.closePause(); }, (d) => this.cycleTab(d), ['Backspace'], (d) => this.cycleGroup(d));
       this.updateDiag();
     } else if (this.title && !this.title.classList.contains('out')) {
       this.nav.update(this.title, () => (this.title?.querySelector('.back') as HTMLElement | null)?.click());
@@ -196,13 +213,34 @@ export class Menus {
     }
   }
 
+  /** LB/RB · Q/E: the next tab inside the current group (wrapping). */
   private cycleTab(dir: number) {
-    const i = pauseTabs().findIndex(([id]) => id === this.tab);
-    this.tab = pauseTabs()[(i + dir + pauseTabs().length) % pauseTabs().length][0];
+    if (this.partyPick) return;
+    const tabs = groupOf(this.tab).tabs;
+    if (tabs.length < 2) { Sfx.play('ui_error'); return; }
+    const i = tabs.findIndex(([id]) => id === this.tab);
+    this.setTab(tabs[(i + dir + tabs.length) % tabs.length][0]);
+    const sub = this.pause?.querySelector<HTMLElement>(`.mn-sub[data-tab="${this.tab}"]`);
+    if (sub) this.nav.focus(sub);
+  }
+
+  /** LT/RT · Z/C: the next group, on the tab it was last left on. */
+  private cycleGroup(dir: number) {
+    if (this.partyPick) return;
+    const gs = pauseGroups();
+    const i = gs.findIndex((g) => g.id === groupOf(this.tab).id);
+    const g = gs[(i + dir + gs.length) % gs.length];
+    this.setTab(entryTab(g, this.lastTab[g.id]));
+    const b = this.pause?.querySelector<HTMLElement>(`.mn-tab[data-group="${g.id}"]`);
+    if (b) this.nav.focus(b);
+  }
+
+  private setTab(id: string) {
+    if (id === this.tab) return;
+    this.tab = id;
+    this.lastTab[groupOf(id).id] = id;
     Sfx.play('ui_move');
     this.renderPause();
-    const tab = this.pause?.querySelectorAll<HTMLElement>('.mn-tab')[pauseTabs().findIndex(([id]) => id === this.tab)];
-    if (tab) this.nav.focus(tab);
   }
 
   // -------------------------------------------------------------------------
@@ -214,7 +252,7 @@ export class Menus {
     const p = el('div', 'pause-menu', undefined, this.game.ui.topLayer);
     this.pause = p;
     p.innerHTML = `<div class="mn-title">Menu</div><div class="mn-money">⚙ <b></b> 기어</div>
-      <div class="mn-tabs"></div>
+      <div class="mn-tabs"></div><div class="mn-subtabs"></div>
       <div class="mn-foot"><button class="mn-btn resume" data-pad-first>계속하기 <span class="resume-key"></span></button><button class="mn-btn small title-btn">타이틀로</button></div>
       <div class="mn-body"></div>`;
     this.nav.reset();
@@ -232,14 +270,16 @@ export class Menus {
       }
       this.game.setMode('title'); // leaving the field also closes this menu
     };
+    if (!pauseTabs().some(([id]) => id === this.tab)) this.tab = pauseTabs()[0][0];
     const tabs = p.querySelector('.mn-tabs') as HTMLElement;
-    pauseTabs().forEach(([id, label], i) => {
-      const b = el('button', 'mn-tab' + (id === this.tab ? ' on' : ''), `<span>${label}</span>`, tabs);
+    pauseGroups().forEach((g, i) => {
+      const b = el('button', 'mn-tab', `<span>${g.label}</span><small>${g.tabs.map(([, l]) => l).join(' · ')}</small>`, tabs);
+      b.dataset.group = g.id;
       b.style.setProperty('--i', String(i));
-      b.onclick = () => { if (this.tab !== id && !this.partyPick) { Sfx.play('ui_move'); this.tab = id; this.renderPause(); } };
+      b.onclick = () => { if (groupOf(this.tab).id !== g.id && !this.partyPick) this.setTab(entryTab(g, this.lastTab[g.id])); };
     });
-    // tab-switch keys under the tabs, following the input device
-    bindInput(el('div', 'mn-tabhint', '', tabs), (s) => (s.device === 'pad' ? `${pb('lb')}${pb('rb')}` : '<kbd>Q</kbd><kbd>E</kbd>') + '<span>탭 전환</span>');
+    // group-switch keys under the groups, following the input device
+    bindInput(el('div', 'mn-tabhint', '', tabs), (s) => (s.device === 'pad' ? `${pb('lt')}${pb('rt')}` : '<kbd>Z</kbd><kbd>C</kbd>') + '<span>그룹 전환</span>');
     this.renderPause();
   }
 
@@ -247,6 +287,7 @@ export class Menus {
   openTab(id: string) {
     if (!this.pause || !pauseTabs().some(([t]) => t === id)) return;
     this.tab = id;
+    this.lastTab[groupOf(id).id] = id;
     this.renderPause();
   }
 
@@ -262,7 +303,23 @@ export class Menus {
     const st = State.current;
     p.querySelector('.mn-modal')?.remove();
     (p.querySelector('.mn-money b') as HTMLElement).textContent = String(st.money);
-    p.querySelectorAll('.mn-tab').forEach((b, i) => b.classList.toggle('on', pauseTabs()[i][0] === this.tab));
+    const group = groupOf(this.tab);
+    p.querySelectorAll<HTMLElement>('.mn-tab').forEach((b) => b.classList.toggle('on', b.dataset.group === group.id));
+    // the group's tabs along the top of the content: [LB] tab · tab · tab [RB]
+    const sub = p.querySelector('.mn-subtabs') as HTMLElement;
+    if (sub.dataset.group !== group.id || sub.dataset.tab !== this.tab) {
+      sub.dataset.group = group.id;
+      sub.dataset.tab = this.tab;
+      sub.innerHTML = '';
+      const multi = group.tabs.length > 1;
+      if (multi) bindInput(el('span', 'mn-subkey', '', sub), (s) => (s.device === 'pad' ? pb('lb') : '<kbd>Q</kbd>'));
+      for (const [id, label] of group.tabs) {
+        const b = el(multi ? 'button' : 'div', `mn-sub${id === this.tab ? ' on' : ''}`, label, sub);
+        b.dataset.tab = id;
+        if (multi) b.onclick = () => { if (!this.partyPick) this.setTab(id); };
+      }
+      if (multi) bindInput(el('span', 'mn-subkey', '', sub), (s) => (s.device === 'pad' ? pb('rb') : '<kbd>E</kbd>'));
+    }
     const body = p.querySelector('.mn-body') as HTMLElement;
     body.innerHTML = '';
     body.className = `mn-body tab-${this.tab}`;
@@ -274,6 +331,7 @@ export class Menus {
     else if (this.tab === 'journal') this.renderJournal(body);
     else if (this.tab === 'workshop') this.renderWorkshop(body);
     else if (this.tab === 'settings') this.renderSettings(body);
+    else if (this.tab === 'log') this.renderLog(body);
     else this.renderControls(body);
   }
 
@@ -546,18 +604,35 @@ export class Menus {
     }
   }
 
-  /** 수첩: the current objective, the sub-quests and the party's bonds. */
+  /**
+   * 수첩: the current objective, the sub-quests and the party's bonds. Picking an open or running
+   * quest turns 찾기 on for it (one at a time — the HUD and minimap then point at its next step).
+   */
   private renderJournal(body: HTMLElement) {
     const st = State.current;
     const story = this.game.story;
     el('div', 'mn-sec', '지금 할 일', body);
     el('div', 'jr-goal', `<b>${story.ch.goal()}</b><span class="dim">${st.chapterTitle()} 「노래하는 정오」 · 플레이 ${Math.floor(st.playTime / 60)}분</span>`, body);
     el('div', 'mn-sec', '의뢰', body);
+    const tracked = story.trackedQuest()?.id ?? null;
     const qs = story.ch.quests().filter((q) => q.state !== 'locked');
+    if (qs.some((q) => q.state !== 'done')) bindInput(el('div', 'mn-note', '', body), (s) => `${s.device === 'pad' ? pb('a') : '클릭 · <kbd>Enter</kbd>'}로 <b>찾기</b> — 미니맵과 목표 줄이 그 의뢰의 다음 장소를 가리킵니다. 찾기는 한 번에 하나.`);
     const list = el('div', 'jr-list', undefined, body);
     for (const q of qs) {
-      el('div', `jr-q ${q.state}`, `<div class="jr-t"><span class="jr-st">${{ open: '미수락', active: '진행 중', done: '완료' }[q.state as 'open']}</span>${q.title}<span class="dim"> — ${q.giver}</span></div>
-        <div class="jr-s">${q.state === 'done' ? '완료했다.' : q.step}</div><div class="jr-r dim">보수: ${q.reward}</div>`, list);
+      const on = q.id === tracked;
+      const live = q.state !== 'done';
+      const row = el(live ? 'button' : 'div', `jr-q ${q.state}${on ? ' tracked' : ''}`, `<div class="jr-t"><span class="jr-st">${{ open: '미수락', active: '진행 중', done: '완료' }[q.state as 'open']}</span>${q.title}<span class="dim"> — ${q.giver}</span>${live ? `<span class="jr-find">${on ? '찾는 중' : '찾기'}</span>` : ''}</div>
+        <div class="jr-s">${q.state === 'done' ? '완료했다.' : q.state === 'open' ? `${q.giver.replace(/ \(.*\)$/, '')}에게 의뢰 받기 — ${q.step}` : q.step}</div><div class="jr-r dim">보수: ${q.reward}</div>`, list);
+      if (!live) continue;
+      row.onclick = () => {
+        st.tracked = on ? null : q.id;
+        Sfx.play(on ? 'ui_back' : 'ui_ok');
+        story.refresh();
+        this.renderPause();
+        const again = this.pause?.querySelector<HTMLElement>(`.jr-q[data-q="${q.id}"]`);
+        if (again) this.nav.focus(again);
+      };
+      row.dataset.q = q.id;
     }
     if (!qs.length) el('div', 'mn-note', '아직 받은 의뢰가 없습니다. 쉼표 역의 못판을 확인하세요.', list);
     const mates = st.roster.filter((m) => m.id !== 'kai');
@@ -565,6 +640,14 @@ export class Menus {
       el('div', 'mn-sec', '친밀도', body);
       el('div', 'jr-bonds', mates.map((m) => { const b = st.bond[m.id] ?? 1; return `<span><b>${m.name}</b> ${'♥'.repeat(b)}${'♡'.repeat(3 - b)}</span>`; }).join(''), body);
     }
+  }
+
+  /** 대사 기록: the same log the conversation backlog shows (Y / L during a talk), newest at the bottom. */
+  private renderLog(body: HTMLElement) {
+    bindInput(el('div', 'mn-note', '', body), (s) => `최근 대화 최대 200줄. 대화 도중에도 ${s.device === 'pad' ? pb('y') : '<kbd>L</kbd>'}로 열 수 있습니다. 불러오기를 하면 비워집니다.`);
+    el('div', 'bl-body', Backlog.empty ? '<div class="bl-empty">아직 기록된 대사가 없습니다.</div>' : Backlog.html(), body);
+    // open at the newest line
+    requestAnimationFrame(() => { body.scrollTop = body.scrollHeight; });
   }
 
   /** Bestiary: species list on the left, a large entry on the right. */

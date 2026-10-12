@@ -8,6 +8,13 @@ import { Sfx } from '../core/audio';
  * Chapter 1 「노래하는 정오」 — docs/story/CHAPTER1.md. Beats m01–m10, sub-quests sq01–sq05, camp
  * talks ct01–ct06. Progress lives in story flags (appendix A of the design doc).
  */
+/** m05 singing crystals (data/zones/plains.ts spots crys_a/b/c), in the order they must be struck: low → high. */
+const CRYSTALS = [
+  { id: 'a', name: '큰 결정', x: 46, z: 6 },
+  { id: 'b', name: '중간 결정', x: 57, z: 19 },
+  { id: 'c', name: '작은 결정', x: 34, z: -4 },
+] as const;
+
 type Area = { id: string; zone: string; x: number; z: number; r: number; when: () => boolean; run: () => Promise<void> };
 
 const SHOP: { id: string; price: number; kind: 'item' | 'part' | 'crystal'; after?: string }[] = [
@@ -21,8 +28,13 @@ const SHOP: { id: string; price: number; kind: 'item' | 'part' | 'crystal'; afte
   { id: 'volt', price: 80, kind: 'crystal', after: 'ch1_met_bail' },
 ];
 
-/** Quests for the notice board / log: title, giver, and the current step text. */
-export interface QuestView { id: string; title: string; giver: string; state: 'locked' | 'open' | 'active' | 'done'; step: string; reward: string }
+/** A place in the world the tracker can point at (minimap marker, compass needle). */
+export interface Pos { zone: string; x: number; z: number }
+/**
+ * Quests for the notice board / log: title, giver, the current step text, and where that step
+ * happens (`pos`; null when it can be done anywhere, e.g. recruiting a monster).
+ */
+export interface QuestView { id: string; title: string; giver: string; state: 'locked' | 'open' | 'active' | 'done'; step: string; reward: string; pos: Pos | null }
 
 export class Chapter1 {
   private areas: Area[];
@@ -49,21 +61,31 @@ export class Chapter1 {
   // Objective tracker
   // =====================================================================
   goal(): string {
+    return this.objective().text;
+  }
+
+  /** The main objective line and where it happens. */
+  objective(): { text: string; pos: Pos | null } {
     const f = (id: string) => this.f(id);
     const s = this.s;
     let text = '';
-    let pos: { zone: string; x: number; z: number } | null = null;
+    let pos: Pos | null = null;
     if (!f('ch1_lamps_lit')) {
       const n = [1, 2, 3, 4, 5, 6].filter((i) => f(`lamp${i}`)).length;
       text = n < 6 ? `가스등 켜기 (${n}/6)` : '가스등을 갉던 톱니쥐 쫓아내기';
       const next = [45, 34, 23, 12, 1, -10].findIndex((_, i) => !f(`lamp${i + 1}`));
       pos = next >= 0 ? { zone: 'plains', x: next % 2 ? -4.2 : 4.2, z: [45, 34, 23, 12, 1, -10][next] } : { zone: 'plains', x: -10, z: 32 };
     } else if (!f('ch1_lyra_joined')) { text = '서쪽 파이프 야드의 이상한 불빛'; pos = { zone: 'plains', x: -26, z: 4 }; }
-    else if (!f('ch1_tick_recruited')) { text = '가스등 뒤에 숨은 톱니쥐와 이야기하기'; pos = { zone: 'plains', x: 13, z: 41 }; }
+    else if (!f('ch1_tick_recruited')) { text = '가스등 뒤에 숨은 톱니쥐와 이야기하기'; pos = { zone: 'plains', x: -6.4, z: 12.6 }; }
     else if (!f('ch1_hub_arrived')) {
       text = s.st.zone === 'pause_station' ? '집배대 지부의 마르타, 공방의 피페 만나기' : '남쪽 길로 쉼표 역에 가기';
       pos = s.st.zone === 'pause_station' ? (f('met_marta') ? { zone: 'pause_station', x: -17, z: 12 } : { zone: 'pause_station', x: -17.5, z: -11.5 }) : { zone: 'plains', x: 0, z: 72 };
-    } else if (!f('ch1_crystal_got')) { text = '동쪽 결정 숲의 노래하는 결정'; pos = { zone: 'plains', x: 46, z: 6 }; }
+    } else if (!f('ch1_crystal_got')) {
+      // the puzzle: strike large → medium → small; the marker follows the next crystal in the order
+      const next = CRYSTALS[this.grove];
+      text = `노래하는 결정을 낮은 음부터 두드리기 (${this.grove}/3) — 다음: ${next.name}`;
+      pos = { zone: 'plains', x: next.x, z: next.z };
+    }
     else if (!f('ch1_met_bail')) { text = '서쪽 잿빛 굴뚝 조사'; pos = s.st.zone === 'ashstack_works' ? { zone: 'ashstack_works', x: 0, z: -26 } : { zone: 'plains', x: -72, z: 0 }; }
     else if (!f('ch1_valve_got')) { text = '굴뚝 서쪽 차고의 밸브실'; pos = { zone: 'ashstack_works', x: -46, z: 0 }; }
     else if (!f('ch1_night_talk')) { text = '쉼표 역에 돌아가 점등 표지에서 쉬기'; pos = { zone: 'pause_station', x: 8, z: 6 }; }
@@ -72,8 +94,7 @@ export class Chapter1 {
     else if (!f('ch1_boss_done')) { text = '시계탑 종루로'; pos = s.st.zone === 'clocktower_interior' ? { zone: 'clocktower_interior', x: 0, z: 5 } : { zone: 'plains', x: 0, z: -46 }; }
     else if (!f('ch1_complete')) { text = '쉼표 역으로'; pos = { zone: 'pause_station', x: -17.5, z: -11.5 }; }
     else text = '제1장 클리어 — 못판의 의뢰와 남은 동료를 찾아보자';
-    this.s.field?.hud.setGoal(text, pos);
-    return text;
+    return { text, pos };
   }
 
   // =====================================================================
@@ -318,11 +339,16 @@ export class Chapter1 {
   }
 
   private async strike(which: 'a' | 'b' | 'c') {
-    const order = ['a', 'b', 'c'];
+    const order = CRYSTALS.map((c) => c.id) as string[];
     Sfx.play(which === 'a' ? 'qte_good' : which === 'b' ? 'qte_perfect' : 'parry');
+    // striking one that already rang in this run just rings again — not a mistake
+    if (order.indexOf(which) < this.grove) {
+      this.s.toast(`이미 울린 결정이다 — 다음은 <b>${CRYSTALS[this.grove].name}</b>`, '', 2200);
+      return;
+    }
     if (order[this.grove] === which) {
       this.grove++;
-      this.s.toast(`결정이 울린다 (${this.grove}/3)`, '', 1500);
+      this.s.toast(this.grove < 3 ? `결정이 울린다 (${this.grove}/3) — 다음은 <b>${CRYSTALS[this.grove].name}</b>` : '결정이 울린다 (3/3)', '', 2400);
       if (this.grove < 3) return;
       this.grove = 0;
       await this.say(
@@ -348,6 +374,7 @@ export class Chapter1 {
       this.grove = 0;
       await this.say(['리라', '음이 엉켰어. 처음부터— 앗, 나방이 몰려와!']);
       await this.s.battle(['prism_moth', 'prism_moth'], { id: 'sp_moth_puzzle' });
+      await this.say(['리라', '낮은 음부터 계단처럼이야. 큰 결정, 중간 결정, 작은 결정 순서로 다시 해 보자.']);
     }
   }
 
@@ -568,17 +595,29 @@ export class Chapter1 {
   quests(): QuestView[] {
     const f = (id: string) => this.f(id);
     const st = (accepted: string, done: string, open: boolean) => (f(done) ? 'done' : f(accepted) ? 'active' : open ? 'open' : 'locked') as QuestView['state'];
+    const at = (zone: string, x: number, z: number): Pos => ({ zone, x, z });
+    // NPC / spot positions (data/zones): the station's notice board, Marta, Poppy (moves at night), Pippe
+    const board = at('pause_station', -13, -15), marta = at('pause_station', -17.5, -11.5), pippe = at('pause_station', -16.2, 12.6);
+    const poppy = f('night') ? at('pause_station', -12, 26) : at('pause_station', -5, 1);
+    const beetle = at('plains', -44, -16), knight = at('plains', -12, -40);
+    const lamp = [[-6, 40], [6, 40], [0, 52]].findIndex((_, i) => !f(`sq02_lamp${i + 1}`));
+    const q = (v: Omit<QuestView, 'pos'>, open: Pos | null, active: Pos | null): QuestView => ({ ...v, pos: v.state === 'open' ? open : v.state === 'active' ? active : null });
     return [
-      { id: 'sq01', title: '잃어버린 우편 가방', giver: '마르타 (못판)', state: st('sq01_accepted', 'sq01_done', f('ch1_hub_arrived')),
+      q({ id: 'sq01', title: '잃어버린 우편 가방', giver: '마르타 (못판)', state: st('sq01_accepted', 'sq01_done', f('ch1_hub_arrived')),
         step: f('sq01_bag_found') ? '마르타에게 보고' : '서쪽 파이프 야드(−34, 20)의 톱니쥐 두목에게서 가방 찾기 — 협상하면 보너스', reward: '150 기어 · 에테르 토닉 ×2 (평화적 해결 시 부품 추가)' },
-      { id: 'sq02', title: '꺼진 등에 불을', giver: '포피', state: st('sq02_accepted', 'sq02_done', f('ch1_hub_arrived')),
-        step: f('sq02_lamps_lit') ? '포피에게 알리기' : this.s.st.has('wisp') ? '램프 위스프를 파티에 넣고 절벽 쪽 꺼진 등 3개 조사' : '램프 위스프 영입하기', reward: '부품 렌즈 조각 · 하이 토닉' },
-      { id: 'sq03', title: '광택 대결', giver: '광채 3세 (평원 −44, −16)', state: st('sq03_accepted', 'sq03_done', f('ch1_tick_recruited')),
+        board, f('sq01_bag_found') ? marta : at('plains', -34, 20)),
+      q({ id: 'sq02', title: '꺼진 등에 불을', giver: '포피', state: st('sq02_accepted', 'sq02_done', f('ch1_hub_arrived')),
+        step: f('sq02_lamps_lit') ? '포피에게 알리기' : this.s.st.has('wisp') ? '램프 위스프를 파티에 넣고 절벽 쪽 꺼진 등 3개 조사' : '램프 위스프 영입하기 (평원 동쪽에 많다)', reward: '부품 렌즈 조각 · 하이 토닉' },
+        poppy, f('sq02_lamps_lit') ? poppy : this.s.st.has('wisp') ? (lamp >= 0 ? at('pause_station', ...([[-6, 40], [6, 40], [0, 52]][lamp] as [number, number])) : poppy) : at('plains', 38, 2)),
+      q({ id: 'sq03', title: '광택 대결', giver: '광채 3세 (평원 −44, −16)', state: st('sq03_accepted', 'sq03_done', f('ch1_tick_recruited')),
         step: '아이템 없이 패링 3회 이상 성공한 뒤 브레이크', reward: '광채 3세 영입 · 메트로놈 핀 · 강철 결정 ×2' },
-      { id: 'sq04', title: '교대 근무', giver: '문지기 기사 (평원 −12, −40)', state: st('sq04_accepted', 'sq04_done', f('ch1_crystal_got')),
+        beetle, beetle),
+      q({ id: 'sq04', title: '교대 근무', giver: '문지기 기사 (평원 −12, −40)', state: st('sq04_accepted', 'sq04_done', f('ch1_crystal_got')),
         step: f('sq04_oath_found') ? '문지기 기사에게 서약서 낭독' : '잿빛 굴뚝 감독관 사무실 터(−30, −34)에서 교대 서약서 찾기', reward: '태엽 기사 영입 · 작은 종추 · 하이 토닉 ×2' },
-      { id: 'sq05', title: '첫 합주', giver: '피페', state: st('sq05_accepted', 'sq05_done', f('ch1_night_talk')),
+        knight, f('sq04_oath_found') ? knight : at('ashstack_works', -30, -34)),
+      q({ id: 'sq05', title: '첫 합주', giver: '피페', state: st('sq05_accepted', 'sq05_done', f('ch1_night_talk')),
         step: f('sq05_first_fusion') ? '피페에게 새 두꺼비 보여 주기' : '공방에서 보일러 젤리 + 램프 위스프 합주', reward: '부품 풀무 가죽 · 에테르 결정 ×2' },
+        pippe, pippe),
     ];
   }
 

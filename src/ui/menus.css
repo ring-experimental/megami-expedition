@@ -22,7 +22,22 @@
 .mn-tab:hover::before, .mn-btn:hover::before, body.navfocus .mn-tab.pad-focus::before, body.navfocus .mn-btn.pad-focus::before { border-left-color: var(--gold-hi); }
 .mn-tab.on { transform: translateX(22px) scale(1.05); color: var(--ink-0); }
 .mn-tab.on::before { background: var(--gold-hi); border-left-color: var(--ink-0); }
-.mn-tabhint { display: flex; align-items: center; gap: 2px; margin: 4px 0 0 calc(9 * -8px + 48px); font: 400 13px var(--f-body); color: var(--bone-dim); }
+/* groups: taller blades with their tabs listed under the name */
+.mn-tabs .mn-tab { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; height: 62px; width: 250px; }
+.mn-tab > span { font: 800 23px/1.1 var(--f-cmd); }
+.mn-tab small { font: 400 12px/1.3 var(--f-body); color: var(--bone-dim); white-space: nowrap; }
+.mn-tab.on small { color: var(--ink-2); }
+.mn-tabhint { display: flex; align-items: center; gap: 2px; margin: 4px 0 0 calc(4 * -8px + 48px); font: 400 13px var(--f-body); color: var(--bone-dim); }
+/* the group's tabs along the top of the content: [LB] tab tab tab [RB] */
+.mn-subtabs { left: 360px; top: 30px; display: flex; align-items: center; gap: 6px; }
+.mn-sub { position: relative; isolation: isolate; padding: 4px 22px; border: none; background: none; font: 800 16px var(--f-cmd); color: var(--bone-dim); cursor: pointer; transition: transform 0.16s var(--ease-pop), color 0.1s; }
+.mn-sub::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--ink-2); transform: skewX(-14deg); border-bottom: 2px solid var(--gold-dk); }
+div.mn-sub { cursor: default; }
+button.mn-sub:hover, body.navfocus .mn-sub.pad-focus { color: var(--bone); transform: translateY(-3px); }
+button.mn-sub:hover::before, body.navfocus .mn-sub.pad-focus::before { border-bottom-color: var(--gold-hi); }
+.mn-sub.on { color: var(--ink-0); transform: scale(1.06); }
+.mn-sub.on::before { background: var(--gold-hi); border-bottom-color: var(--ink-0); }
+.mn-subkey { display: flex; margin: 0 4px; }
 .mn-tabhint span { margin-left: 6px; }
 .mn-foot { left: 34px; bottom: 34px; display: flex; flex-direction: column; gap: 8px; }
 .mn-btn.small { height: 34px; width: 210px; font-size: 14px; color: var(--bone-dim); }
@@ -255,14 +270,21 @@ body.navfocus .pause-menu .pad-focus { outline: none; box-shadow: none; }
 .jr-goal { display: flex; flex-direction: column; gap: 2px; padding: 8px 22px; margin-left: 10px; max-width: 760px; font: 800 18px var(--f-cmd); color: var(--gold-hi); background: var(--ink-1); border-left: 3px solid var(--gold); }
 .jr-goal .dim { font: 400 12px var(--f-body); }
 .jr-list { display: flex; flex-direction: column; gap: 6px; max-width: 760px; padding-left: 10px; }
-.jr-q { padding: 6px 18px; background: var(--ink-1); border-left: 3px solid var(--gold-dk); }
+.jr-q { display: block; width: 100%; padding: 6px 18px; border: none; text-align: left; color: inherit; font: inherit; cursor: default; background: var(--ink-1); border-left: 3px solid var(--gold-dk); }
+button.jr-q { cursor: pointer; transition: transform 0.2s var(--ease-settle); }
+button.jr-q:hover, body.navfocus button.jr-q.pad-focus { transform: translateX(8px); background: var(--ink-2); border-left-color: var(--gold-hi); }
+.jr-find { float: right; margin-left: 12px; padding: 0 10px; font: 800 12px/1.7 var(--f-cmd); color: var(--gold); box-shadow: inset 0 0 0 1.5px var(--gold-dk); transform: skewX(-12deg); }
+button.jr-q:hover .jr-find, body.navfocus button.jr-q.pad-focus .jr-find { box-shadow: inset 0 0 0 1.5px var(--gold-hi); color: var(--gold-hi); }
+/* 찾는 중: the selected state is inversion (bible §3) */
+.jr-q.tracked { border-left-color: var(--gold-hi); box-shadow: inset 0 0 0 1px var(--gold-dk); }
+.jr-q.tracked .jr-find { color: var(--ink-0); background: var(--gold-hi); box-shadow: none; }
 .jr-q.active { border-left-color: var(--gold-hi); }
 .jr-q.done { opacity: 0.55; }
 .jr-t { font: 800 15px var(--f-cmd); color: var(--bone); }
 .jr-t .dim { font: 400 12px var(--f-body); }
 .jr-st { margin-right: 8px; padding: 0 6px; font: 800 11px var(--f-cmd); color: var(--ink-0); background: var(--gold); }
 .jr-q.done .jr-st { background: var(--bone-dim); }
-.jr-s { margin-top: 2px; font: 400 13px/1.5 var(--f-body); color: var(--bone); }
+.jr-s { margin-top: 2px; font: 400 14px/1.5 var(--f-body); color: var(--bone); }
 .jr-r { font: 400 12px var(--f-body); }
 .jr-bonds { display: flex; flex-wrap: wrap; gap: 8px 22px; padding-left: 10px; font: 400 14px var(--f-body); color: var(--gold); }
 .jr-bonds b { color: var(--bone); font-weight: 800; }

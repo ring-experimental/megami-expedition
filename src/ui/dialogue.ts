@@ -3,6 +3,7 @@ import { Sfx } from '../core/audio';
 import { el } from '../core/utils';
 import { portraitInner, type Expression } from './art';
 import { bindInput, pb } from './glyph';
+import { Backlog, BACKLOG_KEYS, showBacklog } from './backlog';
 import type { UI } from './ui';
 import './dialogue.css';
 
@@ -22,6 +23,8 @@ export class Dialogue {
   private off: (() => void) | null = null;
   private advance: (() => void) | null = null;
   private pick: { i: number; n: number; set: (i: number) => void; done: () => void } | null = null;
+  /** the backlog is open over the conversation: the band ignores input until it closes */
+  private logOpen = false;
 
   constructor(private ui: UI) {}
 
@@ -41,6 +44,13 @@ export class Dialogue {
     bindInput(r.querySelector('.fd-next') as HTMLElement, (s) => (s.device === 'pad' ? pb('a') : '▼'));
     r.addEventListener('click', () => this.advance?.());
     this.off = Input.listen((code) => {
+      if (this.logOpen) return;
+      if (BACKLOG_KEYS.includes(code)) {
+        this.logOpen = true;
+        this.root?.classList.add('log-open');
+        void showBacklog(this.ui.topLayer).then(() => { this.logOpen = false; this.root?.classList.remove('log-open'); });
+        return;
+      }
       if (this.pick) {
         if (K.up.includes(code) || K.left.includes(code)) this.pick.set(this.pick.i - 1);
         else if (K.down.includes(code) || K.right.includes(code)) this.pick.set(this.pick.i + 1);
@@ -56,6 +66,7 @@ export class Dialogue {
   }
 
   close() {
+    Backlog.end();
     this.off?.();
     this.off = null;
     this.root?.remove();
@@ -91,6 +102,7 @@ export class Dialogue {
 
   /** Typewriter line; resolves when the player advances past it. */
   say(line: Line): Promise<void> {
+    Backlog.add({ who: line.who, text: line.text, color: line.color });
     const tEl = this.show(line);
     const r = this.root!;
     return new Promise((resolve) => {
@@ -121,6 +133,7 @@ export class Dialogue {
 
   /** Question with answer blades (W/S or ↑↓, number keys, click). */
   choose(line: Line, options: string[]): Promise<number> {
+    Backlog.add({ who: line.who, text: line.text, color: line.color });
     const tEl = this.show(line);
     tEl.innerHTML = esc(line.text);
     const r = this.root!;
@@ -140,6 +153,7 @@ export class Dialogue {
         this.pick = null;
         r.classList.remove('asking');
         Sfx.play('ui_ok');
+        Backlog.add({ who: '', text: options[i], kind: 'pick' });
         resolve(i);
       };
       this.pick = { i: 0, n: els.length, set, done };

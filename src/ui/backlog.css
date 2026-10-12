@@ -1,0 +1,30 @@
+/* 대사 기록 (ui/backlog.ts). Over a conversation: the scene sinks into ink, the log is a tall
+   column on the right half (where the dialogue band's text sits), title wedge on the left.
+   Inside the menu (원정 → 대사 기록) the same lines render in the content area. */
+.backlog { position: absolute; inset: 0; z-index: 60; pointer-events: auto; background: rgba(11, 9, 7, 0.94); animation: blIn 0.2s var(--ease-settle); }
+.backlog.out { opacity: 0; transition: opacity 0.12s var(--ease-out); }
+@keyframes blIn { from { opacity: 0; } }
+.bl-head { position: absolute; left: 6%; top: 34px; display: flex; align-items: baseline; gap: 14px; transform: rotate(-6deg); transform-origin: left; }
+.bl-title { font: 900 52px/1 var(--f-ink); color: var(--gold-hi); text-shadow: 3px 3px 0 #000; }
+.bl-sub { font: 800 16px var(--f-cmd); color: var(--ink-0); background: var(--gold); padding: 1px 12px; }
+.bl-keys { position: absolute; display: flex; align-items: center; gap: 2px; font: 400 14px var(--f-body); color: var(--bone-dim); }
+.backlog .bl-keys { left: 6%; bottom: 30px; }
+.bl-keys span { margin: 0 12px 0 6px; }
+.backlog .bl-body { position: absolute; left: 22%; right: 8%; top: 120px; bottom: 70px; overflow-y: auto; scrollbar-width: none; padding: 0 20px 0 30px; border-left: 3px solid var(--gold-dk); }
+.bl-body::-webkit-scrollbar { display: none; }
+.bl-empty { font: 400 15px var(--f-body); color: var(--bone-dim); padding: 20px 0; }
+
+/* one scene: a gold place tab, then the lines */
+.bl-scene { margin-bottom: 26px; }
+.bl-place { display: inline-block; margin: 0 0 10px -6px; padding: 1px 16px; font: 800 13px var(--f-cmd); color: var(--ink-0); background: var(--gold); transform: skewX(-12deg); }
+.bl-line { display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: baseline; padding: 4px 0; }
+.bl-who { justify-self: end; font: 800 15px var(--f-cmd); color: var(--bone); padding-right: 10px; border-right: 3px solid var(--c, var(--gold-dk)); white-space: nowrap; transform: skewX(-12deg); }
+.bl-line p { margin: 0; font: 400 16px/1.6 var(--f-body); color: var(--bone); }
+.bl-line.narr { grid-template-columns: 150px 1fr; }
+.bl-line.narr p { grid-column: 2; color: var(--bone-dim); font-style: italic; }
+.bl-line.pick .bl-who { color: var(--gold-hi); border-right-color: var(--gold-hi); }
+.bl-line.pick p { color: var(--gold-hi); font-weight: 700; }
+
+/* menu tab */
+.mn-body.tab-log { padding-left: 14px; }
+.mn-body.tab-log .bl-body { max-width: 980px; }

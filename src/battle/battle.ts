@@ -237,6 +237,7 @@ export class BattleMode {
     for (const e of this.enemies) if (e.broken) this.fx.ring(e.centerPos(), 0xffe066, 2, 0.6);
     this.bui.refresh();
     await this.tl.wait(1.3);
+    if (req.event?.duel) await this.tip('duel');
 
     let result: BattleResult | null = null;
     while (!result) {
@@ -265,6 +266,18 @@ export class BattleMode {
       result = this.checkEnd();
     }
     return this.finish(result);
+  }
+
+  /** sq03 duel still winnable: no item used yet, not yet won. */
+  private get duelOn() { return !!this.req.event?.duel && this.report.itemsUsed === 0 && !this.report.duelWon; }
+
+  /**
+   * sq03: while the duel is on, the challenger stands its ground — HP never drops below 30%, so the
+   * fight can't end before the third parry and the break. Using an item forfeits the duel and lifts this.
+   */
+  private duelGuard(u: BUnit) {
+    // stays on after the win too: the challenger yields, it isn't knocked out by the rest of the combo
+    if (u.side === 'enemy' && this.req.event?.duel && this.report.itemsUsed === 0) u.hp = Math.max(u.hp, Math.ceil(u.maxHp * 0.3));
   }
 
   private checkEnd(): BattleResult | null {
@@ -353,7 +366,8 @@ export class BattleMode {
     }
     if (u.has('burn')) {
       const d = Math.max(1, Math.round(u.maxHp * 0.06));
-      u.hp = Math.max(u.side === 'party' ? 0 : 0, u.hp - d);
+      u.hp = Math.max(0, u.hp - d);
+      this.duelGuard(u);
       this.fx.sparks.burst(u.centerPos(), 16, { color: 0xff7a2a, speed: 3, up: 1, life: 0.6, size: 0.18 });
       this.game.ui.popup(u.centerPos(), `${d}`, 'dmg burn');
       Sfx.play('fire');
@@ -747,6 +761,10 @@ export class BattleMode {
     const def = ITEMS[id];
     if (!State.current.useItem(id)) return;
     this.report.itemsUsed++;
+    if (this.req.event?.duel && this.report.itemsUsed === 1 && !this.report.duelWon) {
+      const e = this.enemies.find((x) => x.alive);
+      if (e) { await this.bui.say(e.name, '물약을 썼군. 이번 대결은 무효다 — 다음에 다시 와라.', e.color, e.pid); this.bui.closeDialog(); }
+    }
     this.game.ui.moveName(`${icon('item', id, def.icon)} ${def.name}`);
     u.anim.play('item');
     await this.tl.wait(0.35);
@@ -834,7 +852,7 @@ export class BattleMode {
   private async maybeHoldUp(): Promise<'done' | 'fled' | null> {
     const foes = this.enemies.filter((e) => e.alive);
     // a first strike breaks everyone for free — the hold-up has to be earned by breaking someone here
-    if (!State.current.flag('ch1_holdup') || this.holdUpSpent || !foes.length || !foes.every((e) => e.broken) || this.feats.breaks === 0) return null;
+    if (this.report.duelWon || !State.current.flag('ch1_holdup') || this.holdUpSpent || !foes.length || !foes.every((e) => e.broken) || this.feats.breaks === 0) return null;
     // a gated creature (the bell) only gives in once it's been worn down to half
     if (foes.some((e) => e.species!.talkGate === 'brokenOrHalf' && e.hp > e.maxHp * 0.5)) return null;
     this.holdUpSpent = true;
@@ -1093,6 +1111,8 @@ export class BattleMode {
       e.rapport++;
       this.feats.parries++;
       this.report.parries++;
+      // sq03 duel: count the parries out loud
+      if (this.duelOn && this.feats.parries <= 3) this.game.ui.popup(e.topPos(), this.feats.parries < 3 ? `패링 ${this.feats.parries}/3` : '패링 3/3 · 이제 브레이크', 'info', 1.6);
       Sfx.play('parry');
       Input.rumble(0.35, 0.8, 90);
       this.shake = 0.18;
@@ -1170,6 +1190,7 @@ export class BattleMode {
     if (def.side === 'party' && def.effects.has('firstHitGuard') && !def.guardUsed) { def.guardUsed = true; dmg *= 0.7; }
     dmg = Math.max(1, Math.round(dmg));
     def.hp = Math.max(0, def.hp - dmg);
+    this.duelGuard(def);
     if (def.side === 'party') this.feats.dmgTaken += dmg;
     else if (aff > 1) {
       this.feats.weak++;
@@ -1215,7 +1236,10 @@ export class BattleMode {
 
   private addBreak(e: BUnit, v: number) {
     if (e.broken || !e.alive) return;
-    e.brk = Math.min(e.brkMax, e.brk + v);
+    // sq03 duel: the gauge stops short of a break until the third parry
+    const cap = this.duelOn && this.feats.parries < 3 ? e.brkMax * 0.9 : e.brkMax;
+    if (e.brk < cap && e.brk + v >= cap && cap < e.brkMax) this.game.ui.popup(e.topPos(), `패링 ${this.feats.parries}/3 — 아직 무너지지 않는다`, 'info', 1.6);
+    e.brk = Math.max(e.brk, Math.min(cap, e.brk + v));
     if (e.brk >= e.brkMax) {
       e.broken = true;
       this.feats.breaks++;

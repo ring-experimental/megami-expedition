@@ -5,7 +5,7 @@ import { pb } from '../ui/glyph';
  * Contextual battle tips (UI bible §9-5): each concept is explained once, the first time it comes
  * up, as one or two lines with the actual buttons for the current input device.
  */
-export type TipId = 'ap' | 'qte' | 'parry' | 'break' | 'talk' | 'jump' | 'heat' | 'circuit' | 'bonus' | 'holdup' | 'combo';
+export type TipId = 'ap' | 'qte' | 'parry' | 'break' | 'talk' | 'jump' | 'heat' | 'circuit' | 'bonus' | 'holdup' | 'combo' | 'duel';
 
 export interface Tip { title: string; body: (s: InputState) => string }
 
@@ -52,6 +52,10 @@ export const TIPS: Record<TipId, Tip> = {
   combo: {
     title: '연계기',
     body: () => '패링 · QTE · 브레이크 · 약점 공략으로 <b>증기압 게이지</b>가 찬다(최대 3칸). 칸을 써서 동료와 <b>연계기</b> — 둘이 함께 벤다.',
+  },
+  duel: {
+    title: 'Duel',
+    body: () => '<b>아이템 없이 패링 3회</b>를 성공한 뒤 <b>브레이크</b>하면 승리. 그전까지 상대는 쓰러지지도 무너지지도 않는다. 아이템을 쓰면 대결은 무효.',
   },
   talk: {
     title: 'Talk',
