@@ -156,7 +156,7 @@ kbd.pb::before { content: var(--l); }
 .pb-lb { --l: 'LB'; } .pb-rb { --l: 'RB'; } .pb-lt { --l: 'LT'; } .pb-rt { --l: 'RT'; }
 .pb-start { --l: '☰'; } .pb-back { --l: '⧉'; }
 .pb-ls { --l: 'LS'; } .pb-rs { --l: 'RS'; } .pb-l3 { --l: 'L3'; } .pb-r3 { --l: 'R3'; }
-.pb-dpad { --l: '✚'; } .pb-dud { --l: '✚↕'; }
+.pb-dpad { --l: '✚'; } .pb-dud { --l: '✚↕'; } .pb-dl { --l: '✚←'; }
 .pb-ls, .pb-rs, .pb-l3, .pb-r3 { border-radius: 10px; }
 body[data-pad='ps'] .pb-a { --l: '✕'; color: #8fb8ff; }
 body[data-pad='ps'] .pb-b { --l: '○'; color: #ff7a7a; }

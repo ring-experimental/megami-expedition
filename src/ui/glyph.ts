@@ -5,7 +5,7 @@
  */
 import { Input, type InputState } from '../core/input';
 
-export type PadButton = 'a' | 'b' | 'x' | 'y' | 'lb' | 'rb' | 'lt' | 'rt' | 'start' | 'back' | 'ls' | 'rs' | 'l3' | 'r3' | 'dpad' | 'dud';
+export type PadButton = 'a' | 'b' | 'x' | 'y' | 'lb' | 'rb' | 'lt' | 'rt' | 'start' | 'back' | 'ls' | 'rs' | 'l3' | 'r3' | 'dpad' | 'dud' | 'dl';
 
 /** A gamepad button glyph (label comes from CSS). */
 export const pb = (b: PadButton) => `<kbd class="pb pb-${b}"></kbd>`;

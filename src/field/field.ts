@@ -21,6 +21,7 @@ import type { Game } from '../game/game';
 import { Player } from './player';
 import { FieldEnemy } from './fieldEnemy';
 import { buildGrass, buildTerrain, heightAt, plazaMask, roadMask, setTerrain } from './terrain';
+import { FIELD_BACKLOG_KEYS, showBacklog } from '../ui/backlog';
 import { Animator } from '../anim/rig';
 import { getModel } from '../core/assets';
 
@@ -705,6 +706,7 @@ export class FieldMode {
     }
     if (controls && Input.wheel) this.camDist = clamp(this.camDist + Input.wheel * 0.6, 3.5, 11);
     if (controls && Input.pressed('KeyH', 'PadBack')) this.hud.toggleHelp();
+    if (controls && Input.pressed(...FIELD_BACKLOG_KEYS)) void this.cutscene(() => showBacklog(this.game.ui.topLayer, FIELD_BACKLOG_KEYS));
 
     this.player.update(dt, this.camYaw, controls);
     if (!this.inCutscene) {

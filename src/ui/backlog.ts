@@ -7,7 +7,7 @@ import './backlog.css';
 /**
  * 대사 기록 (backlog): the last conversations, grouped into scenes. Field talks, story narration and
  * battle negotiations all write here; answers the player picked are kept as their own lines.
- * Session only (not saved). Opened from a conversation (Y / L) and from Menu → 원정 → 대사 기록.
+ * Session only (not saved). Opened from a conversation (Y / L) and in the field (L / D-pad left).
  */
 export interface LogLine { who: string; text: string; color?: string; kind?: 'narr' | 'pick' }
 interface Scene { place: string; lines: LogLine[] }
@@ -53,19 +53,21 @@ export const Backlog = new BacklogStore();
 
 /** Keys that open / close the backlog from a conversation. */
 export const BACKLOG_KEYS = ['KeyL', 'PadY'];
+/** Keys that open / close it in the field (Y is the heavy attack, D-pad up/down zoom; left is free). */
+export const FIELD_BACKLOG_KEYS = ['KeyL', 'PadLeft'];
 
 /**
  * Full-screen backlog over a conversation: the log scrolled to the newest line, ↑↓ / stick scroll,
  * Y · L · B · Esc close. Resolves when it closes; the conversation underneath waits.
  */
-export function showBacklog(layer: HTMLElement): Promise<void> {
+export function showBacklog(layer: HTMLElement, keys: string[] = BACKLOG_KEYS): Promise<void> {
   Sfx.play('ui_ok');
   const r = el('div', 'backlog', `<div class="bl-head"><span class="bl-title">Log</span><span class="bl-sub">대사 기록</span></div><div class="bl-keys"></div>
     <div class="bl-body">${Backlog.empty ? '<div class="bl-empty">아직 기록된 대사가 없습니다.</div>' : Backlog.html()}</div>`, layer);
   const body = r.querySelector('.bl-body') as HTMLElement;
   body.scrollTop = body.scrollHeight;
   bindInput(r.querySelector('.bl-keys') as HTMLElement, (s) => s.device === 'pad'
-    ? `${pb('dud')}<span>스크롤</span>${pb('y')}${pb('b')}<span>닫기</span>`
+    ? `${pb('dud')}<span>스크롤</span>${pb(keys.includes('PadLeft') ? 'dl' : 'y')}${pb('b')}<span>닫기</span>`
     : '<kbd>↑</kbd><kbd>↓</kbd><span>스크롤</span><kbd>L</kbd><kbd>Esc</kbd><span>닫기</span>');
   return new Promise((resolve) => {
     let off: (() => void) | null = null;
@@ -83,7 +85,7 @@ export function showBacklog(layer: HTMLElement): Promise<void> {
       off = Input.listen((code) => {
         if (K.up.includes(code)) body.scrollBy({ top: -90 });
         else if (K.down.includes(code)) body.scrollBy({ top: 90 });
-        else if ([...BACKLOG_KEYS, 'PadB', 'Escape', 'Backspace'].includes(code)) close();
+        else if ([...keys, 'PadB', 'Escape', 'Backspace'].includes(code)) close();
       }) as unknown as () => void;
     });
     r.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.bl-body')) close(); });

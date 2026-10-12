@@ -9,7 +9,11 @@ import type { Pos, QuestView } from '../story/chapter1';
 import { Input, type InputState } from '../core/input';
 import { portraitInner } from './art';
 import { pb, type PadButton } from './glyph';
+import { heightAt } from '../field/terrain';
 import './fieldHud.css';
+
+const _bw = new THREE.Vector3();
+const _bc = new THREE.Vector3();
 
 /**
  * Action buttons, laid out like the pad's face buttons (UI bible §9-6). Keyboard players see the
@@ -26,6 +30,7 @@ const FACE: Action[] = [
 const SHOULDER: Action[] = [
   { slot: 'run', label: '달리기', pad: 'lb', key: '<kbd>Shift</kbd>', codes: ['ShiftLeft', 'ShiftRight', 'PadLB'] },
   { slot: 'menu', label: '메뉴', pad: 'start', key: '<kbd>Esc</kbd>', codes: ['Escape', 'PadStart'] },
+  { slot: 'log', label: '대사 기록', pad: 'dl', key: '<kbd>L</kbd>', codes: ['KeyL', 'PadLeft'] },
   { slot: 'hide', label: '안내 숨기기', pad: 'back', key: '<kbd>H</kbd>', codes: [] },
 ];
 
@@ -65,6 +70,7 @@ export class FieldHud {
   private promptText = '';
   private interactKey = '';
   private mapT = 0;
+  private beacons: HTMLElement[] = [];
   /**
    * The field keeps simulating while the HUD is hidden (title backdrop, battle-start wipe), so the
    * HUD must not draw then — otherwise it re-shows the enemy plates `setVisible(false)` just hid.
@@ -83,6 +89,8 @@ export class FieldHud {
     el('div', 'fh-compass', compassSvg(), tr);
     this.prompt = el('div', 'fh-prompt', '', this.root);
     this.actions = el('div', 'fh-actions', undefined, this.root);
+    // in-world objective markers (main first, then the tracked quest)
+    this.beacons = [true, false].map((main) => el('div', `fh-beacon${main ? '' : ' q'}`, '<i class="fb-arrow"></i><b class="fb-gem"></b><span class="fb-d"></span>', this.root));
     Input.subscribe((s) => {
       this.renderActions(s);
       this.interactKey = s.device === 'pad' ? pb('a') : '<kbd>E</kbd>';
@@ -132,6 +140,45 @@ export class FieldHud {
       frontier = next;
     }
     return null;
+  }
+
+  /**
+   * Objective markers in the 3D view: a gold diamond (main) / hollow diamond (quest) floating over the
+   * target with its distance. Off screen or behind the camera, it sticks to the screen edge with an
+   * arrow toward it. Targets in another zone are marked at the gate that leads there. Hidden within
+   * 4 m (you're there) and during cutscenes.
+   */
+  private updateBeacons() {
+    const f = this.field;
+    const cam = f.camera;
+    const W = this.ui.width, H = this.ui.height;
+    [this.goalPos, this.questPos].forEach((pos, i) => {
+      const b = this.beacons[i];
+      const m = this.markerAt(pos);
+      const dist = m ? Math.hypot(m.x - f.player.pos.x, m.z - f.player.pos.z) : 0;
+      if (!m || f.inCutscene || dist < 4) { b.style.display = 'none'; return; }
+      _bw.set(m.x, heightAt(m.x, m.z) + 2.4, m.z);
+      _bc.copy(_bw).applyMatrix4(cam.matrixWorldInverse);
+      const behind = _bc.z > 0;
+      _bw.project(cam);
+      let x = _bw.x, y = _bw.y;
+      if (behind) { x = -x; y = -y; }
+      const mx = 0.9, my = 0.8;
+      const edge = behind || Math.abs(x) > mx || Math.abs(y) > my;
+      if (edge) {
+        // push the point out along its direction from the centre until it meets the margin box
+        if (behind && Math.hypot(x, y) < 1e-3) y = -1;
+        const k = 1 / Math.max(Math.abs(x) / mx, Math.abs(y) / my);
+        x *= k; y *= k;
+      }
+      b.style.display = '';
+      b.classList.toggle('edge', edge);
+      b.style.transform = `translate(${((x * 0.5 + 0.5) * W).toFixed(1)}px, ${((-y * 0.5 + 0.5) * H).toFixed(1)}px) translate(-50%, -50%) scale(${this.ui.scale})`;
+      if (edge) (b.firstElementChild as HTMLElement).style.transform = `rotate(${Math.atan2(-y, x)}rad)`;
+      const d = b.lastElementChild as HTMLElement;
+      const txt = `${Math.round(dist)}m`;
+      if (d.textContent !== txt) d.textContent = txt;
+    });
   }
 
   /** Where to point for a target: itself when it is in this zone, otherwise the gate toward it. */
@@ -246,6 +293,7 @@ export class FieldHud {
       this.ui.placeAt(a.el, a.e.topPos().add(new THREE.Vector3(0, 0.6, 0)));
       if (a.t > 0.9) { a.el.remove(); this.alerts.splice(i, 1); }
     }
+    this.updateBeacons();
     // the minimap doesn't need 60 Hz
     this.mapT -= dt;
     if (this.mapT <= 0) { this.mapT = 1 / 15; this.drawMap(); }

@@ -24,7 +24,3 @@
 .bl-line.narr p { grid-column: 2; color: var(--bone-dim); font-style: italic; }
 .bl-line.pick .bl-who { color: var(--gold-hi); border-right-color: var(--gold-hi); }
 .bl-line.pick p { color: var(--gold-hi); font-weight: 700; }
-
-/* menu tab */
-.mn-body.tab-log { padding-left: 14px; }
-.mn-body.tab-log .bl-body { max-width: 980px; }

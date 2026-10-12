@@ -7,7 +7,6 @@ import { Input } from '../core/input';
 import { bindInput, padName, pb } from './glyph';
 import { PadNav, type Adjustable } from './padNav';
 import { controlsPage } from './controlsHelp';
-import { Backlog } from './backlog';
 import './menus.css';
 import './title.css';
 
@@ -34,7 +33,7 @@ const needHtml = (c: Partial<Record<Element, number>>) => Object.entries(c).map(
  * top of the content (LT/RT · Z/C switch groups, LB/RB · Q/E switch tabs inside a group).
  */
 const GROUPS: { id: string; label: string; tabs: [string, string][] }[] = [
-  { id: 'expedition', label: '원정', tabs: [['journal', '수첩'], ['log', '대사 기록'], ['bestiary', '몬스터 도감']] },
+  { id: 'expedition', label: '원정', tabs: [['journal', '수첩'], ['bestiary', '몬스터 도감']] },
   { id: 'company', label: '동료', tabs: [['party', '파티 편성'], ['board', '부품'], ['workshop', '공방']] },
   { id: 'items', label: '소지품', tabs: [['items', '소지품']] },
   { id: 'system', label: '시스템', tabs: [['save', '저장 · 불러오기'], ['settings', '설정'], ['controls', '조작법']] },
@@ -331,7 +330,6 @@ export class Menus {
     else if (this.tab === 'journal') this.renderJournal(body);
     else if (this.tab === 'workshop') this.renderWorkshop(body);
     else if (this.tab === 'settings') this.renderSettings(body);
-    else if (this.tab === 'log') this.renderLog(body);
     else this.renderControls(body);
   }
 
@@ -640,14 +638,6 @@ export class Menus {
       el('div', 'mn-sec', '친밀도', body);
       el('div', 'jr-bonds', mates.map((m) => { const b = st.bond[m.id] ?? 1; return `<span><b>${m.name}</b> ${'♥'.repeat(b)}${'♡'.repeat(3 - b)}</span>`; }).join(''), body);
     }
-  }
-
-  /** 대사 기록: the same log the conversation backlog shows (Y / L during a talk), newest at the bottom. */
-  private renderLog(body: HTMLElement) {
-    bindInput(el('div', 'mn-note', '', body), (s) => `최근 대화 최대 200줄. 대화 도중에도 ${s.device === 'pad' ? pb('y') : '<kbd>L</kbd>'}로 열 수 있습니다. 불러오기를 하면 비워집니다.`);
-    el('div', 'bl-body', Backlog.empty ? '<div class="bl-empty">아직 기록된 대사가 없습니다.</div>' : Backlog.html(), body);
-    // open at the newest line
-    requestAnimationFrame(() => { body.scrollTop = body.scrollHeight; });
   }
 
   /** Bestiary: species list on the left, a large entry on the right. */
