@@ -30,6 +30,7 @@
 .fd-opt.sel::before { background: var(--gold-hi); border-left-color: var(--ink-0); }
 .fd-opt.sel .n { color: var(--ink-0); }
 body.pad .fd-opt .n { display: none; }
-.fdlg.black { background: var(--ink-0); }
+/* above the screen fade (.fade, z 50): openings narrate while the fade still holds the screen black */
+.fdlg.black { z-index: 51; background: var(--ink-0); }
 .fdlg.black .fd-band::before { background: transparent; border-color: transparent; box-shadow: none; }
 .fdlg.black .fd-text { font-size: 22px; }
