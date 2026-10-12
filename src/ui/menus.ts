@@ -290,6 +290,14 @@ export class Menus {
     this.renderPause();
   }
 
+  /** A different save was loaded / a new game started: forget selections that pointed into the old one. */
+  resetForState() {
+    this.partyPick = null;
+    this.pickRoot = null;
+    this.forge = {};
+    this.boardHero = 'kai';
+  }
+
   hidePause() {
     this.partyPick = null;
     this.pause?.remove();

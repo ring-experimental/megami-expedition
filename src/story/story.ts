@@ -128,6 +128,16 @@ export class Story {
     await new Promise((r) => setTimeout(r, sec * 1000));
   }
 
+  /**
+   * A different save became State.current (new game / load): rebuild the chapter (no state carried
+   * over from the previous save) and redraw the objective tracker and 찾기 target from the new one.
+   */
+  reset() {
+    this.ch = new Chapter1(this);
+    this.busyArea = false;
+    this.refresh();
+  }
+
   /** Re-evaluate the objective tracker and flag-driven actors. */
   refresh() {
     const f = this.game.field;

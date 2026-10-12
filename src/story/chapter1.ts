@@ -38,8 +38,9 @@ export interface QuestView { id: string; title: string; giver: string; state: 'l
 
 export class Chapter1 {
   private areas: Area[];
-  /** m05 puzzle: how many crystals struck in the right order */
-  private grove = 0;
+  /** m05 puzzle: how many crystals struck in the right order — a story flag, so it is saved per slot */
+  private get grove() { return this.s.flag('m05_grove'); }
+  private set grove(n: number) { this.s.set('m05_grove', n); }
 
   constructor(private s: Story) {
     const f = (id: string) => !!s.flag(id);

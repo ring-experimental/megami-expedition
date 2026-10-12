@@ -272,6 +272,8 @@ export class Game {
     State.current.difficulty = diff;
     this.ui.fadeOut(300).then(() => {
       this.field.syncFromState(); // fresh state: plains, story flags all unset
+      this.menus.resetForState();
+      this.story.reset();
       this.field.respawnPlayer(true);
       this.setMode('field');
       void this.field.cutscene(() => this.story.onNewGame());
@@ -309,7 +311,9 @@ export class Game {
       return false;
     }
     Backlog.clear();
+    this.menus.resetForState();
     this.field.syncFromState();
+    this.story.reset();
     if (this.mode === 'field') {
       if (this.paused) { this.paused = false; this.menus.hidePause(); Input.consumePressed(); }
       this.field.enter();
