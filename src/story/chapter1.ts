@@ -625,12 +625,12 @@ export class Chapter1 {
     for (;;) {
       const qs = this.quests().filter((q) => q.state !== 'locked');
       const label = (q: QuestView) => `${q.state === 'done' ? '✔ ' : q.state === 'active' ? '▶ ' : ''}${q.title} — ${q.giver}`;
-      const i = await this.s.ask(['내레이션', '못판에 의뢰서가 꽂혀 있다.'], [...qs.map(label), '닫는다']);
+      const i = await this.s.ask(['내레이션', '못판에 의뢰서가 꽂혀 있다.'], [...qs.map(label), '닫는다'], qs.length);
       if (i >= qs.length) return;
       const q = qs[i];
       await this.say(['내레이션', `「${q.title}」 ${q.state === 'done' ? '(완료)' : ''} — ${q.step}. 보수: ${q.reward}`]);
       if (q.id === 'sq01' && q.state === 'open') {
-        const a = await this.s.ask(['마르타', '서쪽 파이프 야드 쥐들이 우편 가방을 물어 갔다. 편지가 스물세 통이야. 맡겠냐?'], ['맡는다', '나중에']);
+        const a = await this.s.ask(['마르타', '서쪽 파이프 야드 쥐들이 우편 가방을 물어 갔다. 편지가 스물세 통이야. 맡겠냐?'], ['맡는다', '나중에'], 1);
         if (a === 0) { this.set('sq01_accepted'); this.s.field.refreshActors(); this.s.toast('의뢰 수락: 잃어버린 우편 가방', 'gold'); }
       }
     }

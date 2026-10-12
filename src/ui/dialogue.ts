@@ -22,7 +22,7 @@ export class Dialogue {
   private root: HTMLElement | null = null;
   private off: (() => void) | null = null;
   private advance: (() => void) | null = null;
-  private pick: { i: number; n: number; set: (i: number) => void; done: () => void } | null = null;
+  private pick: { i: number; n: number; set: (i: number) => void; done: () => void; cancel?: number } | null = null;
   /** the backlog is open over the conversation: the band ignores input until it closes */
   private logOpen = false;
 
@@ -55,6 +55,7 @@ export class Dialogue {
         if (K.up.includes(code) || K.left.includes(code)) this.pick.set(this.pick.i - 1);
         else if (K.down.includes(code) || K.right.includes(code)) this.pick.set(this.pick.i + 1);
         else if (['Enter', 'Space', 'KeyE', 'KeyF', 'PadA', 'NumpadEnter'].includes(code)) this.pick.done();
+        else if (this.pick.cancel !== undefined && ['PadB', 'Escape', 'Backspace'].includes(code)) { this.pick.set(this.pick.cancel); this.pick.done(); }
         else if (/^Digit[1-9]$/.test(code)) { const i = +code.slice(5) - 1; if (i < this.pick.n) { this.pick.set(i); this.pick.done(); } }
         return;
       }
@@ -131,8 +132,11 @@ export class Dialogue {
     for (const l of lines) await this.say(l);
   }
 
-  /** Question with answer blades (W/S or ↑↓, number keys, click). */
-  choose(line: Line, options: string[]): Promise<number> {
+  /**
+   * Question with answer blades (W/S or ↑↓, number keys, click). `cancel`: the option that
+   * B (○) / Esc / Backspace picks — closing a list, declining an offer.
+   */
+  choose(line: Line, options: string[], cancel?: number): Promise<number> {
     Backlog.add({ who: line.who, text: line.text, color: line.color });
     const tEl = this.show(line);
     tEl.innerHTML = esc(line.text);
@@ -140,6 +144,7 @@ export class Dialogue {
     r.classList.add('done', 'asking');
     const box = r.querySelector('.fd-choices') as HTMLElement;
     const els = options.map((o, i) => el('div', 'fd-opt', `<span class="n">${i + 1}</span>${o}`, box));
+    if (cancel !== undefined) bindInput(el('div', 'fd-cancel', '', box), (s) => `${s.device === 'pad' ? pb('b') : '<kbd>Esc</kbd>'}<span>${options[cancel]}</span>`);
     return new Promise((resolve) => {
       const set = (i: number) => {
         const n = els.length;
@@ -156,7 +161,7 @@ export class Dialogue {
         Backlog.add({ who: '', text: options[i], kind: 'pick' });
         resolve(i);
       };
-      this.pick = { i: 0, n: els.length, set, done };
+      this.pick = { i: 0, n: els.length, set, done, cancel };
       set(0);
       els.forEach((e, i) => {
         e.addEventListener('mouseenter', () => set(i));

@@ -89,8 +89,9 @@ export class FieldHud {
     el('div', 'fh-compass', compassSvg(), tr);
     this.prompt = el('div', 'fh-prompt', '', this.root);
     this.actions = el('div', 'fh-actions', undefined, this.root);
-    // in-world objective markers (main first, then the tracked quest)
-    this.beacons = [true, false].map((main) => el('div', `fh-beacon${main ? '' : ' q'}`, '<i class="fb-arrow"></i><b class="fb-gem"></b><span class="fb-d"></span>', this.root));
+    // in-world objective markers (main first, then the tracked quest). They live on the world layer:
+    // the HUD layer is CSS-zoomed by the UI scale, which would multiply their screen coordinates.
+    this.beacons = [true, false].map((main) => el('div', `fh-beacon${main ? '' : ' q'}`, '<i class="fb-arrow"></i><b class="fb-gem"></b><span class="fb-d"></span>', ui.layer));
     Input.subscribe((s) => {
       this.renderActions(s);
       this.interactKey = s.device === 'pad' ? pb('a') : '<kbd>E</kbd>';
@@ -151,6 +152,8 @@ export class FieldHud {
   private updateBeacons() {
     const f = this.field;
     const cam = f.camera;
+    // the camera was moved this frame but its matrices refresh only at render: project with this frame's
+    cam.updateMatrixWorld();
     const W = this.ui.width, H = this.ui.height;
     [this.goalPos, this.questPos].forEach((pos, i) => {
       const b = this.beacons[i];
@@ -173,7 +176,7 @@ export class FieldHud {
       }
       b.style.display = '';
       b.classList.toggle('edge', edge);
-      b.style.transform = `translate(${((x * 0.5 + 0.5) * W).toFixed(1)}px, ${((-y * 0.5 + 0.5) * H).toFixed(1)}px) translate(-50%, -50%) scale(${this.ui.scale})`;
+      b.style.transform = `translate(${((x * 0.5 + 0.5) * W).toFixed(1)}px, ${((-y * 0.5 + 0.5) * H).toFixed(1)}px) scale(${this.ui.scale}) translate(-50%, -9px)`; // anchor = the diamond's centre (9 px down)
       if (edge) (b.firstElementChild as HTMLElement).style.transform = `rotate(${Math.atan2(-y, x)}rad)`;
       const d = b.lastElementChild as HTMLElement;
       const txt = `${Math.round(dist)}m`;
@@ -192,6 +195,7 @@ export class FieldHud {
     this.visible = v;
     this.root.style.display = v ? '' : 'none';
     if (!v) {
+      for (const b of this.beacons) b.style.display = 'none';
       for (const e of this.field.enemies) if (e.ui) e.ui.root.style.display = 'none';
       // an alert raised right before a battle would otherwise sit unplaced at (0,0) all battle
       for (const a of this.alerts) a.el.remove();

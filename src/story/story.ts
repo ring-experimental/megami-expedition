@@ -79,8 +79,9 @@ export class Story {
     this.dlg.setBlack(false);
   }
 
-  async ask(l: L, options: string[]) {
-    const i = await this.dlg.choose(this.line(l), options);
+  /** Question with answers; `cancel` is the option B (○) / Esc picks (e.g. 닫는다, 나중에). */
+  async ask(l: L, options: string[], cancel?: number) {
+    const i = await this.dlg.choose(this.line(l), options, cancel);
     this.dlg.close();
     return i;
   }

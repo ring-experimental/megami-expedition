@@ -105,7 +105,7 @@ kbd.ms::after { content: ''; position: absolute; left: 50%; top: 2px; width: 1px
 .fh-beacon .fb-gem { width: 18px; height: 18px; background: var(--gold-hi); transform: rotate(45deg) scaleY(1.2); box-shadow: 0 0 0 2.5px var(--ink-0), 0 0 12px rgba(242, 201, 76, 0.7); animation: beaconBob 1.6s ease-in-out infinite alternate; }
 .fh-beacon.q .fb-gem { background: var(--ink-0); box-shadow: inset 0 0 0 3.5px var(--gold-hi), 0 0 0 2px var(--ink-0), 0 0 12px rgba(242, 201, 76, 0.5); }
 .fh-beacon .fb-d { margin-top: 4px; padding: 0 6px; font: 800 13px var(--f-num); color: var(--gold-hi); background: rgba(11, 9, 7, 0.75); text-shadow: 1px 1px 0 #000; }
-.fh-beacon .fb-arrow { position: absolute; z-index: 1; left: 50%; top: 12px; width: 0; height: 0; display: none; }
+.fh-beacon .fb-arrow { position: absolute; z-index: 1; left: 50%; top: 9px; width: 0; height: 0; display: none; }
 .fh-beacon .fb-arrow::before { content: ''; position: absolute; left: 28px; top: -10px; border: 10px solid transparent; border-left: 16px solid var(--gold-hi); filter: drop-shadow(0 0 1.5px #000); }
 .fh-beacon.edge .fb-arrow { display: block; }
 .fh-beacon.edge .fb-gem { animation: none; }

@@ -30,6 +30,8 @@
 .fd-opt.sel::before { background: var(--gold-hi); border-left-color: var(--ink-0); }
 .fd-opt.sel .n { color: var(--ink-0); }
 body.pad .fd-opt .n { display: none; }
+/* B / Esc shortcut for the cancel option, under the blades */
+.fd-cancel { display: flex; align-items: center; gap: 6px; margin-top: 2px; font: 400 14px var(--f-body); color: var(--bone-dim); }
 /* above the screen fade (.fade, z 50): openings narrate while the fade still holds the screen black */
 .fdlg.black { z-index: 51; background: var(--ink-0); }
 .fdlg.black .fd-band::before { background: transparent; border-color: transparent; box-shadow: none; }

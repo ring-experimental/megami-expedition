@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import type { Game } from './game/game';
 import { State } from './game/state';
+import { heightAt } from './field/terrain';
 
 export function installDebug(game: Game) {
   const step = (s: number, render = false) => game.debugAdvance(s, render);
@@ -42,6 +43,34 @@ export function installDebug(game: Game) {
       await sleep(1200);
       await step(2);
     },
+    /**
+     * E2E check for the field objective markers: where each on-screen marker's diamond is drawn vs
+     * where the target projects through the field camera onto the canvas (CSS px). Run at several
+     * viewport sizes / aspect ratios; `err` should stay under 1 px, and edge markers `inside` the canvas.
+     */
+    beaconCheck() {
+      const f = game.field;
+      const canvas = (game as unknown as { renderer: { domElement: HTMLCanvasElement } }).renderer.domElement.getBoundingClientRect();
+      const hud = f.hud as unknown as { goalPos: { x: number; z: number; zone: string } | null; questPos: { x: number; z: number; zone: string } | null; markerAt(p: unknown): { x: number; z: number } | null };
+      return [...document.querySelectorAll<HTMLElement>('.fh-beacon')].map((b, i) => {
+        const m = hud.markerAt(i === 0 ? hud.goalPos : hud.questPos);
+        if (!m || b.style.display === 'none') return { i, shown: false };
+        // measure with the bob animation paused so only placement error remains
+        const gemEl = b.querySelector('.fb-gem') as HTMLElement;
+        gemEl.style.animation = 'none';
+        const gem = gemEl.getBoundingClientRect();
+        gemEl.style.animation = '';
+        const got = { x: gem.left + gem.width / 2, y: gem.top + gem.height / 2 };
+        if (b.classList.contains('edge')) {
+          const inside = got.x >= canvas.left && got.x <= canvas.right && got.y >= canvas.top && got.y <= canvas.bottom;
+          return { i, shown: true, edge: true, inside, got };
+        }
+        const v = new THREE.Vector3(m.x, heightAt(m.x, m.z) + 2.4, m.z).project(f.camera);
+        const want = { x: canvas.left + (v.x * 0.5 + 0.5) * canvas.width, y: canvas.top + (-v.y * 0.5 + 0.5) * canvas.height };
+        return { i, shown: true, edge: false, err: Math.round(Math.hypot(got.x - want.x, got.y - want.y) * 10) / 10, got, want };
+      });
+    },
+
     /** Drive the battle: party uses basic attacks, perfect parries (or none). */
     async auto(opts: { parry?: boolean; dodge?: boolean; maxSteps?: number; stopOnEnemyTurn?: boolean } = {}) {
       const b = game.battle;
